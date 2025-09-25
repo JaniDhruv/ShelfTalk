@@ -1,0 +1,663 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import './Discover.css';
+
+export default function Discover() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState('users');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedGenres, setSelectedGenres] = useState([]);
+  const [selectedAuthors, setSelectedAuthors] = useState('');
+  const [locationFilter, setLocationFilter] = useState('');
+  const [readingFormat, setReadingFormat] = useState('Any');
+  const [readingSpeed, setReadingSpeed] = useState('Any');
+  const [languagesFilter, setLanguagesFilter] = useState('');
+  const [sortBy, setSortBy] = useState('username');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [users, setUsers] = useState([]);
+  const [bookClubs, setBookClubs] = useState([]);
+  const [clubsLoading, setClubsLoading] = useState(false);
+  const [clubsError, setClubsError] = useState('');
+  const [clubsInfo, setClubsInfo] = useState('');
+  const [clubName, setClubName] = useState('');
+  const [clubDescription, setClubDescription] = useState('');
+  const [clubVisibility, setClubVisibility] = useState('public');
+  // Clubs filter state
+  const [clubSearch, setClubSearch] = useState('');
+  const [clubFilterVisibility, setClubFilterVisibility] = useState('any'); // any|public|private
+  const [clubOwnership, setClubOwnership] = useState('any'); // any|mine|joined|not_joined
+  const [clubSort, setClubSort] = useState('recent'); // recent|name|members
+
+  const genres = [
+    'Fantasy', 'Science Fiction', 'Romance', 'Mystery', 'Thriller',
+    'Literary Fiction', 'Contemporary Fiction', 'Historical Fiction',
+    'Young Adult', 'Biography', 'Self-Help', 'Non-Fiction', 'Horror',
+    'Adventure', 'Philosophy', 'Poetry', 'Drama', 'Comedy', 'Travel'
+  ];
+
+  const readingFormats = ['Any', 'Physical', 'E-book', 'Audiobook'];
+  const readingSpeeds = ['Any', 'Slow', 'Average', 'Fast'];
+
+  // Sync active tab with ?tab= query parameter
+  useEffect(() => {
+    const tab = (searchParams.get('tab') || '').toLowerCase();
+    if (tab === 'users' || tab === 'clubs') {
+      setActiveTab(tab);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // When switching tabs via UI, update the query param for deep-linking
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      return next;
+    });
+  };
+
+  const fetchUsers = async () => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.append('search', searchQuery);
+    if (locationFilter) params.append('location', locationFilter);
+    if (selectedGenres.length) params.append('genres', selectedGenres.join(','));
+    if (selectedAuthors) params.append('authors', selectedAuthors);
+    if (readingFormat !== 'Any') params.append('readingFormat', readingFormat);
+    if (readingSpeed !== 'Any') params.append('readingSpeed', readingSpeed);
+    if (languagesFilter) params.append('languages', languagesFilter);
+    if (sortBy) params.append('sortBy', sortBy);
+    try {
+      console.log('Fetching users with params:', params.toString());
+      setIsLoading(true);
+      const resp = await fetch(`http://localhost:5000/api/discover/users?${params.toString()}`);
+      const data = await resp.json();
+      console.log('Received users:', data?.length || 0, data);
+      setUsers(data || []);
+    } catch (e) {
+      console.error('Failed to load users', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchClubs = async () => {
+    try {
+      setClubsLoading(true);
+      setClubsError('');
+      const resp = await fetch('http://localhost:5000/api/groups');
+      if (!resp.ok) throw new Error('Failed to load groups');
+      const data = await resp.json();
+      setBookClubs(data || []);
+    } catch (e) {
+      console.error('Failed to load groups', e);
+      setClubsError(e.message || 'Failed to load groups');
+    } finally {
+      setClubsLoading(false);
+    }
+  };
+
+  // Group actions for Book Clubs tab
+  const createGroup = async (e) => {
+    e.preventDefault();
+    if (!user || !user._id) { setClubsError('Login required'); return; }
+    try {
+      const res = await fetch('http://localhost:5000/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: clubName.trim(),
+          description: clubDescription.trim(),
+          createdBy: user._id,
+          visibility: clubVisibility
+        })
+      });
+      if (!res.ok) throw new Error('Failed to create group');
+      setClubName('');
+      setClubDescription('');
+      await fetchClubs();
+    } catch (e) { setClubsError(e.message); }
+  };
+
+  const joinGroup = async (groupId) => {
+    if (!user || !user._id) { setClubsError('Login required'); return; }
+    try {
+      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/add-member`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user._id })
+      });
+      if (!res.ok) throw new Error('Failed to join group');
+      await fetchClubs();
+    } catch (e) { setClubsError(e.message); }
+  };
+
+  const leaveGroup = async (groupId) => {
+    if (!user || !user._id) { setClubsError('Login required'); return; }
+    try {
+      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/remove-member`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user._id })
+      });
+      if (!res.ok) throw new Error('Failed to leave group');
+      await fetchClubs();
+    } catch (e) { setClubsError(e.message); }
+  };
+
+  const deleteGroup = async (groupId) => {
+    if (!window.confirm('Delete this group?')) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/groups/${groupId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete group');
+      await fetchClubs();
+    } catch (e) { setClubsError(e.message); }
+  };
+
+  const respondInvite = async (groupId, accept) => {
+    if (!user || !user._id) { setClubsError('Login required'); return; }
+    try {
+      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/invite/respond`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ actorId: user._id, accept })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to respond');
+      setClubsInfo(data.message || 'Handled');
+      await fetchClubs();
+    } catch (e) { setClubsError(e.message); }
+  };
+
+  const approveJoin = async (groupId, requesterId) => {
+    if (!user || !user._id) { setClubsError('Login required'); return; }
+    try {
+      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/approve`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requesterId, actorId: user._id })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to approve');
+      setClubsInfo('Request approved');
+      await fetchClubs();
+    } catch (e) { setClubsError(e.message); }
+  };
+
+  const declineJoin = async (groupId, requesterId) => {
+    if (!user || !user._id) { setClubsError('Login required'); return; }
+    try {
+      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/decline`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requesterId, actorId: user._id })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to decline');
+      setClubsInfo('Request declined');
+      await fetchClubs();
+    } catch (e) { setClubsError(e.message); }
+  };
+
+  // Load all users by default when component mounts and when switching to users tab
+  useEffect(() => {
+    if (activeTab === 'users') {
+      console.log('Fetching users on tab change or filter change');
+      fetchUsers();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, searchQuery, selectedGenres, selectedAuthors, locationFilter, readingFormat, readingSpeed, languagesFilter, sortBy]);
+
+  // Load users immediately when component mounts
+  useEffect(() => {
+    console.log('Component mounted, fetching users');
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'clubs') fetchClubs();
+  }, [activeTab]);
+
+  // Users list without the logged-in user
+  const visibleUsers = React.useMemo(() => {
+    const uid = user?._id || user?.id;
+    return (users || []).filter(u => (u._id || u.id) !== uid);
+  }, [users, user]);
+
+  // Derived filtered/sorted clubs
+  const filteredClubs = React.useMemo(() => {
+    let list = [...bookClubs];
+    if (clubSearch.trim()) {
+      const q = clubSearch.trim().toLowerCase();
+      list = list.filter(c =>
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.description || '').toLowerCase().includes(q) ||
+        (c.createdBy?.username || '').toLowerCase().includes(q)
+      );
+    }
+    if (clubFilterVisibility !== 'any') {
+      list = list.filter(c => (c.visibility || 'public') === clubFilterVisibility);
+    }
+    if (user && user._id && clubOwnership !== 'any') {
+      const isMember = (c) => (c.members || []).some(m => (m._id || m) === user._id);
+      const isOwner = (c) => (c.createdBy?._id || c.createdBy) === user._id;
+      if (clubOwnership === 'mine') list = list.filter(isOwner);
+      if (clubOwnership === 'joined') list = list.filter(isMember);
+      if (clubOwnership === 'not_joined') list = list.filter(c => !isMember(c) && !isOwner(c));
+    }
+    if (clubSort === 'name') list.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+    if (clubSort === 'members') list.sort((a,b) => (b.members?.length||0) - (a.members?.length||0));
+    if (clubSort === 'recent') list.sort((a,b) => new Date(b.createdAt||b.updatedAt||0) - new Date(a.createdAt||a.updatedAt||0));
+    return list;
+  }, [bookClubs, clubSearch, clubFilterVisibility, clubOwnership, clubSort, user]);
+
+  const handleGenreToggle = (genre) => {
+    setSelectedGenres(prev =>
+      prev.includes(genre)
+        ? prev.filter(g => g !== genre)
+        : [...prev, genre]
+    );
+  };
+
+
+  const handleMessage = async (userId) => {
+    try {
+      const uid = user?._id || user?.id;
+      const response = await fetch('http://localhost:5000/api/chat/conversations/dm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participants: [uid, userId] }),
+      });
+      if (response.ok) {
+        const newChat = await response.json();
+        navigate(`/chat?conversation=${newChat._id}`);
+      } else {
+        console.error('Failed to create chat');
+      }
+    } catch (error) {
+      console.error('Error creating chat:', error);
+    }
+  };
+
+  return (
+    <div className="discover-container">
+      {/* StudyMATE-like Header Section */}
+      <div className="sm-header-section">
+        <div className="sm-header-content">
+          <div className="sm-header-text">
+            <h2 className="sm-title"><i className="fas fa-users"></i> Find Your Reading Partner</h2>
+            <p className="sm-subtitle">Connect with readers to enhance your literary journey</p>
+          </div>
+          <button className="sm-invite-btn"><i className="fas fa-user-plus"></i> Invite Friends</button>
+        </div>
+      </div>
+
+      {/* StudyMATE-like Tabs */}
+      <div className="discover-navigation">
+        <div className="nav-container">
+          <button
+            className={`nav-tab ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => handleTabChange('users')}
+          >
+            <i className="fas fa-users"></i>
+            Readers
+          </button>
+          <button
+            className={`nav-tab ${activeTab === 'clubs' ? 'active' : ''}`}
+            onClick={() => handleTabChange('clubs')}
+          >
+            <i className="fas fa-book-open"></i>
+            Book Clubs
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="discover-content">
+        {activeTab === 'users' && (
+          <div className="users-section">
+            {/* StudyMATE-like Filter Card */}
+            <div className="sm-filter-card">
+              <div className="sm-filter-header">
+                <h6><i className="fas fa-filter"></i> Filter Users</h6>
+              </div>
+              <div className="sm-filter-body">
+                <div className="sm-filter-row">
+                  <div className="sm-search-group">
+                    <i className="fas fa-search"></i>
+                    <input
+                      type="text"
+                      className="sm-search-input"
+                      placeholder="Search users..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    <button className="sm-search-btn" onClick={fetchUsers}>Search</button>
+                  </div>
+                  <select className="sm-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                    <option value="username">Sort: Username</option>
+                    <option value="books_read">Sort: Books Read</option>
+                    <option value="recent">Sort: Recently Joined</option>
+                    <option value="online">Sort: Online</option>
+                  </select>
+                  <input
+                    type="text"
+                    className="sm-input"
+                    placeholder="Location"
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                  />
+                  <button className="sm-apply-btn" onClick={fetchUsers}>Apply</button>
+                </div>
+                <div className="sm-adv-row">
+                  <input
+                    type="text"
+                    className="sm-input"
+                    placeholder="Favorite authors"
+                    value={selectedAuthors}
+                    onChange={(e) => setSelectedAuthors(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="sm-input"
+                    placeholder="Languages"
+                    value={languagesFilter}
+                    onChange={(e) => setLanguagesFilter(e.target.value)}
+                  />
+                </div>
+                <div className="genre-filters">
+                  <h4>Favorite Genres</h4>
+                  <div className="genre-tags">
+                    {genres.map((genre) => (
+                      <button
+                        key={genre}
+                        className={`genre-tag ${selectedGenres.includes(genre) ? 'active' : ''}`}
+                        onClick={() => handleGenreToggle(genre)}
+                      >
+                        {genre}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Users Grid */}
+            {isLoading ? (
+              <div className="sm-empty">
+                <div className="sm-empty-icon"><i className="fas fa-spinner fa-spin"></i></div>
+                <p>Loading users…</p>
+              </div>
+            ) : (
+              <div className="users-grid">
+                {visibleUsers.length === 0 && (
+                  <div className="sm-empty">
+                    <div className="sm-empty-icon"><i className="fas fa-users"></i></div>
+                    <h5>No users found</h5>
+                    <p>Try adjusting your search or filters</p>
+                    <button className="sm-apply-btn" onClick={() => { setSearchQuery(''); setLocationFilter(''); setSelectedGenres([]); setSelectedAuthors(''); setLanguagesFilter(''); setReadingFormat('Any'); setReadingSpeed('Any'); setSortBy('username'); fetchUsers(); }}>
+                      <i className="fas fa-sync-alt"></i> Reset Filters
+                    </button>
+                  </div>
+                )}
+                {visibleUsers.map((u) => {
+                  const displayName = u.username || 'Reader';
+                  const initials = (u.profile?.fullName?.[0] || u.username?.[0] || 'R').toUpperCase();
+                  const location = u.profile?.location;
+                  const bio = u.profile?.bio;
+                  const favoriteGenres = u.profile?.favoriteGenres || [];
+                  const booksRead = u.profile?.readingStats?.booksRead || 0;
+                  return (
+                    <div key={u._id} className="sm-user-card">
+                      <div className="sm-card-top" />
+                      <div className="sm-card-body">
+                        <div className="sm-card-accent" />
+                        <div className="sm-card-header">
+                          <div className="sm-avatar-wrap">
+                            <div className="sm-avatar">{initials}</div>
+                            <div className="sm-status active" />
+                          </div>
+                          <div className="sm-header-meta">
+                            <span className="sm-role-badge"><i className="fas fa-user"></i> {u.username || displayName}</span>
+                          </div>
+                        </div>
+                        {(u.profile?.fullName || location) && (
+                          <div className="sm-details">
+                            {u.profile?.fullName && (
+                              <div className="sm-detail"><i className="fas fa-user"></i><small>{u.profile.fullName}</small></div>
+                            )}
+                            {location && (
+                              <div className="sm-detail"><i className="fas fa-map-marker-alt"></i><small>{location}</small></div>
+                            )}
+                          </div>
+                        )}
+                        {bio && (
+                          <div className="sm-bio">
+                            <p className="sm-bio-text">{bio}</p>
+                          </div>
+                        )}
+                        {favoriteGenres.length > 0 && (
+                          <div className="sm-skills">
+                            <div className="sm-section-head"><i className="fas fa-brain"></i><small>Favorite genres</small></div>
+                            <div className="sm-skills-list">
+                              {favoriteGenres.slice(0, 3).map((g, idx) => (
+                                <span key={idx} className="sm-badge-item">{typeof g === 'string' ? g : g.name}</span>
+                              ))}
+                              {favoriteGenres.length > 3 && (
+                                <small className="sm-more">+{favoriteGenres.length - 3} more</small>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        <div className="sm-activity">
+                          <i className="fas fa-check-circle"></i>
+                          <span>{booksRead} books read</span>
+                        </div>
+                      </div>
+                      <div className="sm-card-footer">
+                        <div className="sm-actions">
+                          <button className="sm-btn outline" onClick={() => window.open(`/profile/${u._id}`, '_blank')}><i className="fas fa-user"></i> View Profile</button>
+                          <button className="sm-btn ghost" onClick={() => handleMessage(u._id)}><i className="fas fa-envelope"></i> Message</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'clubs' && (
+          <div className="clubs-section">
+            {/* Replicated Groups functionality for Book Clubs */}
+            <div style={{ maxWidth: 1100, margin: '0 auto', padding: 24, width: '100%' }}>
+              {/* Clubs Filters */}
+              <div className="sm-filter-card" style={{ marginBottom: 16 }}>
+                <div className="sm-filter-header">
+                  <h6><i className="fas fa-filter"></i> Filter Book Clubs</h6>
+                </div>
+                <div className="sm-filter-body">
+                  <div className="sm-filter-row">
+                    <div className="sm-search-group">
+                      <i className="fas fa-search"></i>
+                      <input
+                        type="text"
+                        className="sm-search-input"
+                        placeholder="Search clubs by name, description, creator..."
+                        value={clubSearch}
+                        onChange={(e) => setClubSearch(e.target.value)}
+                      />
+                      <button className="sm-search-btn" onClick={fetchClubs}>Search</button>
+                    </div>
+                    <select className="sm-select" value={clubFilterVisibility} onChange={(e) => setClubFilterVisibility(e.target.value)}>
+                      <option value="any">Visibility: Any</option>
+                      <option value="public">Visibility: Public</option>
+                      <option value="private">Visibility: Private</option>
+                    </select>
+                    <select className="sm-select" value={clubOwnership} onChange={(e) => setClubOwnership(e.target.value)}>
+                      <option value="any">Ownership: Any</option>
+                      <option value="mine">Ownership: Created by me</option>
+                      <option value="joined">Membership: I joined</option>
+                      <option value="not_joined">Membership: Not joined</option>
+                    </select>
+                    <select className="sm-select" value={clubSort} onChange={(e) => setClubSort(e.target.value)}>
+                      <option value="recent">Sort: Recent</option>
+                      <option value="name">Sort: Name</option>
+                      <option value="members">Sort: Members</option>
+                    </select>
+                    <button className="sm-apply-btn" onClick={() => { /* No-op, filters are reactive */ }}>
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {clubsError && (
+                <div style={{ color: '#dc2626', padding: 12, background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 8, marginBottom: 16 }}>❌ {clubsError}</div>
+              )}
+
+              {/* Create form intentionally removed in Book Clubs section */}
+
+              {user && (
+                <div className="sm-requests-container">
+                  <h3 className="sm-requests-header">
+                    <i className="fas fa-envelope"></i>
+                    Requests
+                  </h3>
+                  {clubsInfo && <div className="sm-requests-info">ℹ️ {clubsInfo}</div>}
+                  <div className="sm-requests-grid">
+                    <div className="sm-request-card">
+                      <div className="sm-request-card-title">Invites to me</div>
+                      {bookClubs.filter(g => (g.invites || []).some(inv => (inv.to?._id || inv.to) === user._id)).length === 0 ? (
+                        <div className="sm-request-empty">No invites.</div>
+                      ) : (
+                        bookClubs.map(g => (
+                          (g.invites || []).filter(inv => (inv.to?._id || inv.to) === user._id).map(inv => (
+                            <div key={g._id + '-' + (inv.to?._id || inv.to)} className="sm-request-item">
+                              <div className="sm-request-item-content">
+                                <div className="sm-request-item-name">{g.name}</div>
+                                <div className="sm-request-item-meta">From: {inv.from?.username || inv.from}</div>
+                              </div>
+                              <button onClick={() => respondInvite(g._id, true)} className="sm-request-btn sm-request-btn-accept">Accept</button>
+                              <button onClick={() => respondInvite(g._id, false)} className="sm-request-btn sm-request-btn-decline">Decline</button>
+                            </div>
+                          ))
+                        ))
+                      )}
+                    </div>
+                    <div className="sm-request-card">
+                      <div className="sm-request-card-title">My join requests (pending)</div>
+                      {bookClubs.filter(g => (g.joinRequests || []).some(r => (r._id || r) === user._id)).length === 0 ? (
+                        <div className="sm-request-empty">No pending join requests.</div>
+                      ) : (
+                        bookClubs.filter(g => (g.joinRequests || []).some(r => (r._id || r) === user._id)).map(g => (
+                          <div key={g._id} className="sm-request-item">
+                            <div className="sm-request-item-content">
+                              <div className="sm-request-item-name">{g.name}</div>
+                              <div className="sm-request-item-meta">Waiting for approval</div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                  <div className="sm-requests-grid">
+                    <div className="sm-request-card approval">
+                      <div className="sm-request-card-title">Requests waiting for my approval</div>
+                      {bookClubs.filter(g => (g.createdBy?._id || g.createdBy) === user._id && (g.joinRequests || []).length > 0).length === 0 ? (
+                        <div className="sm-request-empty">No requests to review.</div>
+                      ) : (
+                        bookClubs.filter(g => (g.createdBy?._id || g.createdBy) === user._id && (g.joinRequests || []).length > 0).map(g => (
+                          (g.joinRequests || []).map(r => (
+                            <div key={g._id + '-' + (r._id || r)} className="sm-request-item">
+                              <div className="sm-request-item-content">
+                                <div className="sm-request-item-name">{g.name}</div>
+                                <div className="sm-request-item-meta">{r.username || r} wants to join</div>
+                              </div>
+                              <button onClick={() => approveJoin(g._id, r._id || r)} className="sm-request-btn sm-request-btn-accept">Approve</button>
+                              <button onClick={() => declineJoin(g._id, r._id || r)} className="sm-request-btn sm-request-btn-decline">Decline</button>
+                            </div>
+                          ))
+                        ))
+                      )}
+                    </div>
+                    <div className="sm-request-card membership">
+                      <div className="sm-request-card-title">My memberships</div>
+                      {bookClubs.filter(g => (g.members || []).some(m => (m._id || m) === user._id)).length === 0 ? (
+                        <div className="sm-request-empty">Not a member of any group.</div>
+                      ) : (
+                        bookClubs.filter(g => (g.members || []).some(m => (m._id || m) === user._id)).map(g => (
+                          <div key={g._id} className="sm-request-item">
+                            <div className="sm-request-item-content">
+                              <div className="sm-request-item-name">{g.name}</div>
+                              <div className="sm-request-item-meta">Member</div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="sm-group-cards-grid">
+                {clubsLoading ? (
+                  [1,2,3,4].map(i => (
+                    <div key={i} className="sm-group-card-loading">
+                      <div className="sm-loading-title" />
+                      <div className="sm-loading-description" />
+                      <div className="sm-loading-actions">
+                        <div className="sm-loading-btn" />
+                        <div className="sm-loading-btn" />
+                      </div>
+                    </div>
+                  ))
+                ) : filteredClubs.length === 0 ? (
+                  <div className="sm-groups-empty">No groups yet.</div>
+                ) : (
+                  filteredClubs.map(g => {
+                    const isMember = user && user._id && g.members?.some(m => (m._id || m) === user._id);
+                    const canDelete = user && user._id && ((g.createdBy?._id || g.createdBy) === user._id);
+                    return (
+                      <div key={g._id} className="sm-group-card">
+                        <div className="sm-group-card-header">
+                          <div className="sm-group-card-info">
+                            <div className="sm-group-card-title-row">
+                              <div className="sm-group-avatar">
+                                {(g.name?.[0] || '?').toUpperCase()}
+                              </div>
+                              <h4 className="sm-group-card-name">{g.name}</h4>
+                            </div>
+                            <div className="sm-group-card-description">{g.description || 'No description provided.'}</div>
+                            <div>
+                              <span className={`sm-group-visibility-badge ${g.visibility === 'private' ? 'private' : 'public'}`}>
+                                {g.visibility === 'private' ? 'Private' : 'Public'}
+                              </span>
+                            </div>
+                            <div className="sm-group-members-count">{g.members?.length || 0} members</div>
+                          </div>
+                          {canDelete && (
+                            <button onClick={() => deleteGroup(g._id)} title="Delete group" className="sm-group-delete-btn">🗑️</button>
+                          )}
+                        </div>
+                        <div className="sm-group-actions">
+                          {!isMember ? (
+                            <button onClick={() => joinGroup(g._id)} className="sm-group-btn sm-group-btn-join">{g.visibility === 'private' ? 'Request to Join' : 'Join'}</button>
+                          ) : (
+                            <button onClick={() => leaveGroup(g._id)} className="sm-group-btn sm-group-btn-leave">Leave</button>
+                          )}
+                          <Link to={`/groups/${g._id}`} style={{ textDecoration: 'none' }}>
+                            <button className="sm-group-btn sm-group-btn-view">View</button>
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

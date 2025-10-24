@@ -3,6 +3,43 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import './Discover.css';
 
+const buildPresence = (user) => {
+  const profile = user?.profile;
+  if (!profile) {
+    return { isOnline: false, lastSeen: null };
+  }
+  const lastSeenDate = profile.lastSeen ? new Date(profile.lastSeen) : null;
+  const validLastSeen = lastSeenDate && !Number.isNaN(lastSeenDate.getTime()) ? lastSeenDate : null;
+  const isOnlineFlag = profile.isOnline === true || profile.isOnline === 'true' || profile.isOnline === 1;
+  return {
+    isOnline: isOnlineFlag,
+    lastSeen: validLastSeen,
+  };
+};
+
+const humanizeLastSeen = (date) => {
+  if (!date) return null;
+  const reference = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(reference.getTime())) return null;
+  const diffMs = Date.now() - reference.getTime();
+  if (diffMs < 0) return null;
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes < 1) return 'just now';
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return reference.toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
+
+const formatPresenceLabel = (presence) => {
+  if (!presence) return 'Offline';
+  if (presence.isOnline) return 'Online';
+  const humanized = humanizeLastSeen(presence.lastSeen);
+  return humanized ? `Last seen ${humanized}` : 'Offline';
+};
+
 export default function Discover() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -12,8 +49,6 @@ export default function Discover() {
   const [selectedGenres, setSelectedGenres] = useState([]);
   const [selectedAuthors, setSelectedAuthors] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
-  const [readingFormat, setReadingFormat] = useState('Any');
-  const [readingSpeed, setReadingSpeed] = useState('Any');
   const [languagesFilter, setLanguagesFilter] = useState('');
   const [sortBy, setSortBy] = useState('username');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,9 +73,6 @@ export default function Discover() {
     'Young Adult', 'Biography', 'Self-Help', 'Non-Fiction', 'Horror',
     'Adventure', 'Philosophy', 'Poetry', 'Drama', 'Comedy', 'Travel'
   ];
-
-  const readingFormats = ['Any', 'Physical', 'E-book', 'Audiobook'];
-  const readingSpeeds = ['Any', 'Slow', 'Average', 'Fast'];
 
   // Sync active tab with ?tab= query parameter
   useEffect(() => {
@@ -67,8 +99,6 @@ export default function Discover() {
     if (locationFilter) params.append('location', locationFilter);
     if (selectedGenres.length) params.append('genres', selectedGenres.join(','));
     if (selectedAuthors) params.append('authors', selectedAuthors);
-    if (readingFormat !== 'Any') params.append('readingFormat', readingFormat);
-    if (readingSpeed !== 'Any') params.append('readingSpeed', readingSpeed);
     if (languagesFilter) params.append('languages', languagesFilter);
     if (sortBy) params.append('sortBy', sortBy);
     try {
@@ -204,7 +234,7 @@ export default function Discover() {
       fetchUsers();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, searchQuery, selectedGenres, selectedAuthors, locationFilter, readingFormat, readingSpeed, languagesFilter, sortBy]);
+  }, [activeTab, searchQuery, selectedGenres, selectedAuthors, locationFilter, languagesFilter, sortBy]);
 
   // Load users immediately when component mounts
   useEffect(() => {
@@ -334,7 +364,6 @@ export default function Discover() {
                   </div>
                   <select className="sm-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
                     <option value="username">Sort: Username</option>
-                    <option value="books_read">Sort: Books Read</option>
                     <option value="recent">Sort: Recently Joined</option>
                     <option value="online">Sort: Online</option>
                   </select>
@@ -393,7 +422,7 @@ export default function Discover() {
                     <div className="sm-empty-icon"><i className="fas fa-users"></i></div>
                     <h5>No users found</h5>
                     <p>Try adjusting your search or filters</p>
-                    <button className="sm-apply-btn" onClick={() => { setSearchQuery(''); setLocationFilter(''); setSelectedGenres([]); setSelectedAuthors(''); setLanguagesFilter(''); setReadingFormat('Any'); setReadingSpeed('Any'); setSortBy('username'); fetchUsers(); }}>
+                    <button className="sm-apply-btn" onClick={() => { setSearchQuery(''); setLocationFilter(''); setSelectedGenres([]); setSelectedAuthors(''); setLanguagesFilter(''); setSortBy('username'); fetchUsers(); }}>
                       <i className="fas fa-sync-alt"></i> Reset Filters
                     </button>
                   </div>
@@ -404,20 +433,25 @@ export default function Discover() {
                   const location = u.profile?.location;
                   const bio = u.profile?.bio;
                   const favoriteGenres = u.profile?.favoriteGenres || [];
-                  const booksRead = u.profile?.readingStats?.booksRead || 0;
+                  const presence = buildPresence(u);
+                  const statusLabel = formatPresenceLabel(presence);
                   return (
                     <div key={u._id} className="sm-user-card">
                       <div className="sm-card-top" />
                       <div className="sm-card-body">
                         <div className="sm-card-accent" />
-                        <div className="sm-card-header">
-                          <div className="sm-avatar-wrap">
-                            <div className="sm-avatar">{initials}</div>
-                            <div className="sm-status active" />
-                          </div>
-                          <div className="sm-header-meta">
-                            <span className="sm-role-badge"><i className="fas fa-user"></i> {u.username || displayName}</span>
-                          </div>
+                          <div className="sm-card-header">
+                            <div className="sm-avatar-wrap">
+                              <div className="sm-avatar">{initials}</div>
+                              <div className={`sm-status ${presence.isOnline ? 'active' : 'inactive'}`} />
+                            </div>
+                            <div className="sm-header-meta">
+                              <span className="sm-role-badge"><i className="fas fa-user"></i> {u.username || displayName}</span>
+                              <span className={`presence-pill ${presence.isOnline ? 'online' : 'offline'}`} title={presence.isOnline ? 'User is online' : (presence.lastSeen ? `Last seen ${presence.lastSeen.toLocaleString()}` : 'User is offline')}>
+                                <span className={`status-dot ${presence.isOnline ? 'online' : 'offline'}`} />
+                                {statusLabel}
+                              </span>
+                            </div>
                         </div>
                         {(u.profile?.fullName || location) && (
                           <div className="sm-details">
@@ -447,10 +481,6 @@ export default function Discover() {
                             </div>
                           </div>
                         )}
-                        <div className="sm-activity">
-                          <i className="fas fa-check-circle"></i>
-                          <span>{booksRead} books read</span>
-                        </div>
                       </div>
                       <div className="sm-card-footer">
                         <div className="sm-actions">
@@ -527,73 +557,81 @@ export default function Discover() {
                   <div className="sm-requests-grid">
                     <div className="sm-request-card">
                       <div className="sm-request-card-title">Invites to me</div>
-                      {bookClubs.filter(g => (g.invites || []).some(inv => (inv.to?._id || inv.to) === user._id)).length === 0 ? (
-                        <div className="sm-request-empty">No invites.</div>
-                      ) : (
-                        bookClubs.map(g => (
-                          (g.invites || []).filter(inv => (inv.to?._id || inv.to) === user._id).map(inv => (
-                            <div key={g._id + '-' + (inv.to?._id || inv.to)} className="sm-request-item">
-                              <div className="sm-request-item-content">
-                                <div className="sm-request-item-name">{g.name}</div>
-                                <div className="sm-request-item-meta">From: {inv.from?.username || inv.from}</div>
+                      <div className="sm-scroll-requests">
+                        {bookClubs.filter(g => (g.invites || []).some(inv => (inv.to?._id || inv.to) === user._id)).length === 0 ? (
+                          <div className="sm-request-empty">No invites.</div>
+                        ) : (
+                          bookClubs.map(g => (
+                            (g.invites || []).filter(inv => (inv.to?._id || inv.to) === user._id).map(inv => (
+                              <div key={g._id + '-' + (inv.to?._id || inv.to)} className="sm-request-item">
+                                <div className="sm-request-item-content">
+                                  <div className="sm-request-item-name">{g.name}</div>
+                                  <div className="sm-request-item-meta">From: {inv.from?.username || inv.from}</div>
+                                </div>
+                                <button onClick={() => respondInvite(g._id, true)} className="sm-request-btn sm-request-btn-accept">Accept</button>
+                                <button onClick={() => respondInvite(g._id, false)} className="sm-request-btn sm-request-btn-decline">Decline</button>
                               </div>
-                              <button onClick={() => respondInvite(g._id, true)} className="sm-request-btn sm-request-btn-accept">Accept</button>
-                              <button onClick={() => respondInvite(g._id, false)} className="sm-request-btn sm-request-btn-decline">Decline</button>
-                            </div>
+                            ))
                           ))
-                        ))
-                      )}
+                        )}
+                      </div>
                     </div>
                     <div className="sm-request-card">
                       <div className="sm-request-card-title">My join requests (pending)</div>
-                      {bookClubs.filter(g => (g.joinRequests || []).some(r => (r._id || r) === user._id)).length === 0 ? (
-                        <div className="sm-request-empty">No pending join requests.</div>
-                      ) : (
-                        bookClubs.filter(g => (g.joinRequests || []).some(r => (r._id || r) === user._id)).map(g => (
-                          <div key={g._id} className="sm-request-item">
-                            <div className="sm-request-item-content">
-                              <div className="sm-request-item-name">{g.name}</div>
-                              <div className="sm-request-item-meta">Waiting for approval</div>
+                      <div className="sm-scroll-requests">
+                        {bookClubs.filter(g => (g.joinRequests || []).some(r => (r._id || r) === user._id)).length === 0 ? (
+                          <div className="sm-request-empty">No pending join requests.</div>
+                        ) : (
+                          bookClubs.filter(g => (g.joinRequests || []).some(r => (r._id || r) === user._id)).map(g => (
+                            <div key={g._id} className="sm-request-item">
+                              <div className="sm-request-item-content">
+                                <div className="sm-request-item-name">{g.name}</div>
+                                <div className="sm-request-item-meta">Waiting for approval</div>
+                              </div>
                             </div>
-                          </div>
-                        ))
-                      )}
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="sm-requests-grid">
                     <div className="sm-request-card approval">
                       <div className="sm-request-card-title">Requests waiting for my approval</div>
-                      {bookClubs.filter(g => (g.createdBy?._id || g.createdBy) === user._id && (g.joinRequests || []).length > 0).length === 0 ? (
-                        <div className="sm-request-empty">No requests to review.</div>
-                      ) : (
-                        bookClubs.filter(g => (g.createdBy?._id || g.createdBy) === user._id && (g.joinRequests || []).length > 0).map(g => (
-                          (g.joinRequests || []).map(r => (
-                            <div key={g._id + '-' + (r._id || r)} className="sm-request-item">
-                              <div className="sm-request-item-content">
-                                <div className="sm-request-item-name">{g.name}</div>
-                                <div className="sm-request-item-meta">{r.username || r} wants to join</div>
+                      <div className="sm-scroll-requests">
+                        {bookClubs.filter(g => (g.createdBy?._id || g.createdBy) === user._id && (g.joinRequests || []).length > 0).length === 0 ? (
+                          <div className="sm-request-empty">No requests to review.</div>
+                        ) : (
+                          bookClubs.filter(g => (g.createdBy?._id || g.createdBy) === user._id && (g.joinRequests || []).length > 0).map(g => (
+                            (g.joinRequests || []).map(r => (
+                              <div key={g._id + '-' + (r._id || r)} className="sm-request-item">
+                                <div className="sm-request-item-content">
+                                  <div className="sm-request-item-name">{g.name}</div>
+                                  <div className="sm-request-item-meta">{r.username || r} wants to join</div>
+                                </div>
+                                <button onClick={() => approveJoin(g._id, r._id || r)} className="sm-request-btn sm-request-btn-accept">Approve</button>
+                                <button onClick={() => declineJoin(g._id, r._id || r)} className="sm-request-btn sm-request-btn-decline">Decline</button>
                               </div>
-                              <button onClick={() => approveJoin(g._id, r._id || r)} className="sm-request-btn sm-request-btn-accept">Approve</button>
-                              <button onClick={() => declineJoin(g._id, r._id || r)} className="sm-request-btn sm-request-btn-decline">Decline</button>
-                            </div>
+                            ))
                           ))
-                        ))
-                      )}
+                        )}
+                      </div>
                     </div>
                     <div className="sm-request-card membership">
                       <div className="sm-request-card-title">My memberships</div>
-                      {bookClubs.filter(g => (g.members || []).some(m => (m._id || m) === user._id)).length === 0 ? (
-                        <div className="sm-request-empty">Not a member of any group.</div>
-                      ) : (
-                        bookClubs.filter(g => (g.members || []).some(m => (m._id || m) === user._id)).map(g => (
-                          <div key={g._id} className="sm-request-item">
-                            <div className="sm-request-item-content">
-                              <div className="sm-request-item-name">{g.name}</div>
-                              <div className="sm-request-item-meta">Member</div>
+                      <div className="sm-scroll-requests">
+                        {bookClubs.filter(g => (g.members || []).some(m => (m._id || m) === user._id)).length === 0 ? (
+                          <div className="sm-request-empty">Not a member of any group.</div>
+                        ) : (
+                          bookClubs.filter(g => (g.members || []).some(m => (m._id || m) === user._id)).map(g => (
+                            <div key={g._id} className="sm-request-item">
+                              <div className="sm-request-item-content">
+                                <div className="sm-request-item-name">{g.name}</div>
+                                <div className="sm-request-item-meta">Member</div>
+                              </div>
                             </div>
-                          </div>
-                        ))
-                      )}
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

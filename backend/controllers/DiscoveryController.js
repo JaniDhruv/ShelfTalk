@@ -4,7 +4,7 @@ import Profile from '../models/Profile.js';
 
 export const discoverUsers = async (req, res) => {
   try {
-    const { search, location, genres, authors, readingFormat, readingSpeed, languages, sortBy, limit } = req.query;
+  const { search, location, genres, authors, languages, sortBy, limit } = req.query;
     
     console.log('Discovery request params:', req.query);
     
@@ -22,7 +22,7 @@ export const discoverUsers = async (req, res) => {
     
     // Only add isPublic filter if we have other specific criteria
     // This allows showing all users by default, even without complete profiles
-    const hasSpecificFilters = location || genres || authors || readingFormat !== 'Any' || readingSpeed !== 'Any' || languages;
+  const hasSpecificFilters = location || genres || authors || languages;
     
     if (hasSpecificFilters) {
       profileFilter.isPublic = true; // Only filter by public when using specific criteria
@@ -40,14 +40,6 @@ export const discoverUsers = async (req, res) => {
     if (authors) {
       const authorList = authors.split(',').map(a => a.trim());
       profileFilter.favoriteAuthors = { $in: authorList };
-    }
-    
-    if (readingFormat && readingFormat !== 'Any') {
-      profileFilter['readingStats.favoriteFormat'] = readingFormat;
-    }
-    
-    if (readingSpeed && readingSpeed !== 'Any') {
-      profileFilter['readingStats.readingSpeed'] = readingSpeed;
     }
     
     if (languages) {
@@ -80,7 +72,6 @@ export const discoverUsers = async (req, res) => {
             favoriteGenres: p.favoriteGenres,
             favoriteAuthors: p.favoriteAuthors,
             languagesSpoken: p.languagesSpoken,
-            readingStats: p.readingStats,
             socialStats: p.socialStats,
             currentlyReadingBooks: p.currentlyReadingBooks,
             joinDate: p.joinDate,
@@ -107,17 +98,6 @@ export const discoverUsers = async (req, res) => {
           favoriteGenres: [],
           favoriteAuthors: [],
           languagesSpoken: [],
-          readingStats: { 
-            booksRead: 0, 
-            currentlyReading: 0, 
-            toRead: 0,
-            reviewsWritten: 0,
-            readingGoal: 0,
-            goalProgress: 0,
-            readingStreak: 0,
-            favoriteFormat: 'Any',
-            readingSpeed: 'Average'
-          },
           socialStats: { 
             followers: 0, 
             following: 0, 
@@ -136,8 +116,6 @@ export const discoverUsers = async (req, res) => {
     // Sort results
     if (sortBy === 'followers') {
       users.sort((a, b) => (b.profile?.socialStats?.followers || 0) - (a.profile?.socialStats?.followers || 0));
-    } else if (sortBy === 'books_read') {
-      users.sort((a, b) => (b.profile?.readingStats?.booksRead || 0) - (a.profile?.readingStats?.booksRead || 0));
     } else if (sortBy === 'recent') {
       users.sort((a, b) => new Date(b.profile?.joinDate || 0) - new Date(a.profile?.joinDate || 0));
     } else if (sortBy === 'online') {

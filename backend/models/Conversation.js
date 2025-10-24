@@ -7,6 +7,7 @@ const conversationSchema = new mongoose.Schema({
   group: { type: mongoose.Schema.Types.ObjectId, ref: 'Group', default: null },
   lastMessageAt: { type: Date, default: Date.now },
   lastMessage: { type: String, default: '' },
+  lastMessageType: { type: String, enum: ['text', 'image', 'file'], default: 'text' },
   lastSender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   blockedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', default: [] }],
 }, { timestamps: true });

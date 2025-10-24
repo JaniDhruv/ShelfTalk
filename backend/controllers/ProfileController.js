@@ -1,6 +1,20 @@
 import Profile from '../models/Profile.js';
 import User from '../models/User.js';
 
+const ensureUserProfileLink = async (userDoc, profileDoc) => {
+  if (!userDoc || !profileDoc) return;
+  const linkedId = userDoc.profile?.toString?.();
+  const profileId = profileDoc._id?.toString?.();
+  if (profileId && linkedId !== profileId) {
+    userDoc.profile = profileDoc._id;
+    try {
+      await userDoc.save({ validateBeforeSave: false });
+    } catch (err) {
+      console.error('Failed to link profile to user', err);
+    }
+  }
+};
+
 export const getProfileByUserId = async (req, res) => {
   try {
     const { id } = req.params;
@@ -10,6 +24,7 @@ export const getProfileByUserId = async (req, res) => {
     if (!profile) {
       profile = await Profile.create({ user: id, fullName: user.username });
     }
+    await ensureUserProfileLink(user, profile);
     res.json(profile);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -45,6 +60,38 @@ export const searchProfiles = async (req, res) => {
     if (genres) filter['favoriteGenres.name'] = { $in: genres.split(',') };
     const profiles = await Profile.find(filter).limit(50);
     res.json(profiles);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const setOnlineStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isOnline } = req.body;
+
+    if (typeof isOnline !== 'boolean') {
+      return res.status(400).json({ message: 'isOnline boolean value is required' });
+    }
+
+    const update = {
+      isOnline,
+      lastSeen: new Date(),
+    };
+
+    const profile = await Profile.findOneAndUpdate(
+      { user: id },
+      {
+        $set: update,
+        $setOnInsert: { user: id },
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    const userDoc = await User.findById(id);
+    await ensureUserProfileLink(userDoc, profile);
+
+    res.json({ success: true, profile });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

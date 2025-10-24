@@ -31,12 +31,36 @@ export const createGroup = async (req, res) => {
 export const getGroups = async (req, res) => {
   try {
     const groups = await Group.find()
-      .populate('members', 'username email')
-      .populate('createdBy', 'username')
-      .populate('moderators', 'username')
-      .populate('joinRequests', 'username')
-      .populate('invites.to', 'username')
-      .populate('invites.from', 'username');
+      .populate({
+        path: 'members',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'createdBy',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'moderators',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'joinRequests',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'invites.to',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'invites.from',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      });
     res.status(200).json(groups);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -47,12 +71,36 @@ export const getGroups = async (req, res) => {
 export const getGroupById = async (req, res) => {
   try {
     const group = await Group.findById(req.params.id)
-      .populate('members', 'username email')
-      .populate('createdBy', 'username')
-      .populate('moderators', 'username')
-      .populate('joinRequests', 'username')
-      .populate('invites.to', 'username')
-      .populate('invites.from', 'username');
+      .populate({
+        path: 'members',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'createdBy',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'moderators',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'joinRequests',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'invites.to',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'invites.from',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      });
     if (!group) {
       return res.status(404).json({ message: 'Group not found' });
     }
@@ -96,7 +144,7 @@ export const deleteGroup = async (req, res) => {
 // Add member to group
 export const addMember = async (req, res) => {
   try {
-    const { userId } = req.body;
+  const { userId, newOwnerId } = req.body;
     const group = await Group.findById(req.params.id);
     if (!group) return res.status(404).json({ message: 'Group not found' });
     // Public groups: immediate join
@@ -124,14 +172,72 @@ export const addMember = async (req, res) => {
 // Remove member from group
 export const removeMember = async (req, res) => {
   try {
-    const { userId } = req.body;
+    // userId = the member initiating leave / being removed
+    // newOwnerId (optional) = moderator explicitly chosen to become new owner when owner leaves
+    const { userId, newOwnerId } = req.body;
     const group = await Group.findById(req.params.id);
     if (!group) return res.status(404).json({ message: 'Group not found' });
+    const isOwnerLeaving = group.createdBy.toString() === userId;
+    if (isOwnerLeaving) {
+      const memberIds = group.members.map(mem => mem.toString());
+      const validModerators = (group.moderators || []).filter(m => m.toString() !== userId && memberIds.includes(m.toString()));
+      if (validModerators.length === 0) {
+        return res.status(400).json({ message: 'Owner cannot leave: add a moderator first to transfer ownership.' });
+      }
 
+      let chosenOwner;
+      if (newOwnerId) {
+        const match = validModerators.find(m => m.toString() === newOwnerId);
+        if (!match) {
+          return res.status(400).json({ message: 'Selected new owner is not a valid moderator.' });
+        }
+        chosenOwner = match;
+      } else {
+        chosenOwner = validModerators[0];
+      }
+      group.createdBy = chosenOwner;
+      group.moderators = group.moderators.filter(m => m.toString() !== chosenOwner.toString());
+    }
     group.members = group.members.filter(member => member.toString() !== userId);
+    group.moderators = (group.moderators || []).filter(m => m.toString() !== userId);
     await group.save();
-
-    res.status(200).json(group);
+    // Re-populate to return updated relational fields (so frontend instantly reflects moderator removal & new owner)
+    const populatedGroup = await Group.findById(req.params.id)
+      .populate({
+        path: 'members',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'createdBy',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'moderators',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'joinRequests',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'invites.to',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
+      .populate({
+        path: 'invites.from',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      });
+    res.status(200).json({
+      message: isOwnerLeaving ? 'Owner left; ownership transferred.' : 'Member removed',
+      newOwner: isOwnerLeaving ? populatedGroup.createdBy : undefined,
+      group: populatedGroup
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

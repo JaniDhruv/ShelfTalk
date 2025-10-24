@@ -306,7 +306,7 @@
 }
 
 .online-indicator.offline {
-  background: #6b7280;
+  background: #ef4444;
 }
 
 .chat-info {
@@ -357,15 +357,62 @@
   gap: 6px;
 }
 
-/* Enhance preview parts */
-.chat-last-message .preview-prefix {
+.chat-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
   font-weight: 600;
-  color: var(--charcoal-gray);
-  margin-right: 2px;
+  color: var(--forest-green);
+  margin-bottom: 4px;
+}
+
+.chat-status-row.offline {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.chat-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--forest-green);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.7);
+}
+
+.chat-status-dot.offline {
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6);
+}
+
+.chat-status-text {
+  white-space: nowrap;
+}
+
+/* Enhance preview parts */
+.chat-last-message {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.chat-last-message .preview-prefix {
+  font-weight: 700 !important;
+  color: var(--charcoal-gray) !important;
+  display: inline-block !important;
+  flex-shrink: 0;
 }
 
 .chat-last-message .preview-prefix.you {
-  color: var(--deep-burgundy);
+  color: var(--deep-burgundy) !important;
+  font-weight: 700 !important;
+}
+
+.chat-last-message i.fas {
+  color: var(--warm-sepia) !important;
+  font-size: 0.9rem !important;
+  margin: 0 4px !important;
+  flex-shrink: 0;
 }
 
 .chat-last-message .preview-icon {
@@ -459,17 +506,25 @@
   margin: 0 0 2px 0;
 }
 
-.status {
-  font-size: 0.9rem;
-  margin: 0;
-}
-
-.status.online {
+.chat-presence {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
   color: var(--forest-green);
+  margin-bottom: 2px;
 }
 
-.status.offline {
-  color: #6b7280;
+.chat-presence.offline {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.chat-presence .chat-status-dot {
+  width: 10px;
+  height: 10px;
+  box-shadow: none;
 }
 
 .chat-actions {
@@ -641,6 +696,43 @@
   font-size: 0.75rem;
   color: var(--warm-sepia);
   padding: 0 4px;
+}
+
+/* Date Divider */
+.date-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 24px 0;
+  position: relative;
+}
+
+.date-divider::before,
+.date-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(139, 69, 19, 0.2),
+    transparent
+  );
+}
+
+.date-label {
+  padding: 6px 16px;
+  background: rgba(184, 134, 11, 0.1);
+  border: 1px solid rgba(184, 134, 11, 0.2);
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--warm-sepia);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 12px;
+  box-shadow: 0 2px 8px rgba(114, 47, 55, 0.08);
+  backdrop-filter: blur(8px);
 }
 
 /* Message Input */

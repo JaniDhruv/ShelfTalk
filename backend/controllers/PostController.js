@@ -43,7 +43,11 @@ export const createPost = async (req, res) => {
     await post.save();
     
     // Populate author data before sending response
-    await post.populate('author', 'username email');
+    await post.populate({
+      path: 'author',
+      select: 'username email profile',
+      populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+    });
     if (group) {
       await post.populate('group', 'name');
     }
@@ -68,7 +72,11 @@ export const createPost = async (req, res) => {
 export const getPosts = async (req, res) => {
   try {
     const posts = await Post.find()
-      .populate('author', 'username email')
+      .populate({
+        path: 'author',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
       .populate('group', 'name');
     res.status(200).json(posts);
   } catch (error) {
@@ -81,7 +89,11 @@ export const getPosts = async (req, res) => {
 export const getPostById = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id)
-      .populate('author', 'username email')
+      .populate({
+        path: 'author',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      })
       .populate('group', 'name');
 
     if (!post) return res.status(404).json({ message: 'Post not found' });
@@ -117,7 +129,11 @@ export const updatePost = async (req, res) => {
     await post.save();
     
     // Populate author data before sending response
-    await post.populate('author', 'username email');
+    await post.populate({
+      path: 'author',
+      select: 'username email profile',
+      populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+    });
     if (post.group) {
       await post.populate('group', 'name');
     }

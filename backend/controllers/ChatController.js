@@ -10,9 +10,14 @@ export const listConversations = async (req, res) => {
       .populate({
         path: 'members',
         select: 'username email profile',
-        populate: { path: 'profile', select: 'fullName' }
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
       })
-      .populate('group', 'name');
+      .populate('group', 'name')
+      .populate({
+        path: 'lastSender',
+        select: 'username profile',
+        populate: { path: 'profile', select: 'fullName' }
+      });
     res.json(conversations);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -40,15 +45,18 @@ export const sendMessage = async (req, res) => {
     if (convo.blockedBy && convo.blockedBy.length > 0) {
       return res.status(403).json({ message: 'Conversation is blocked' });
     }
+    const msgType = type || 'text';
     const msg = await Message.create({
       conversation: conversationId,
       sender: senderId,
       content,
-      type: type || 'text',
+      type: msgType,
     });
     await Conversation.findByIdAndUpdate(conversationId, {
       lastMessage: content,
       lastMessageAt: new Date(),
+      lastMessageType: msgType,
+      lastSender: senderId,
     });
     const populated = await msg.populate('sender', 'username');
     res.status(201).json(populated);
@@ -73,16 +81,19 @@ export const sendAttachment = async (req, res) => {
     const ext = path.extname(file.originalname).toLowerCase();
     const isImage = ['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext);
     const url = `/uploads/${file.filename}`;
+    const msgType = isImage ? 'image' : 'file';
     const msg = await Message.create({
       conversation: conversationId,
       sender: senderId,
       content: url,
-      type: isImage ? 'image' : 'file',
+      type: msgType,
       fileName: file.originalname,
     });
     await Conversation.findByIdAndUpdate(conversationId, {
-      lastMessage: isImage ? '📷 Image' : `📎 ${file.originalname}`,
+      lastMessage: isImage ? 'Photo' : file.originalname,
       lastMessageAt: new Date(),
+      lastMessageType: msgType,
+      lastSender: senderId,
     });
     const populated = await msg.populate('sender', 'username');
     res.status(201).json(populated);
@@ -107,7 +118,7 @@ export const createDmConversation = async (req, res) => {
     }).populate({
       path: 'members',
       select: 'username email profile',
-      populate: { path: 'profile', select: 'fullName' }
+      populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
     });
     
     if (!convo) {
@@ -144,7 +155,7 @@ export const blockConversation = async (req, res) => {
     const populated = await convo.populate({
       path: 'members',
       select: 'username email profile',
-      populate: { path: 'profile', select: 'fullName' }
+      populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
     });
     res.json(populated);
   } catch (err) {
@@ -165,7 +176,7 @@ export const unblockConversation = async (req, res) => {
     const populated = await convo.populate({
       path: 'members',
       select: 'username email profile',
-      populate: { path: 'profile', select: 'fullName' }
+      populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
     });
     res.json(populated);
   } catch (err) {
@@ -295,7 +306,11 @@ export const createGroupConversation = async (req, res) => {
     let conversation = await Conversation.findOne({ 
       type: 'group', 
       group: groupId 
-    }).populate('members', 'username email profile');
+    }).populate({
+      path: 'members',
+      select: 'username email profile',
+      populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+    });
 
     if (!conversation) {
       // Create new group conversation with all group members
@@ -307,7 +322,11 @@ export const createGroupConversation = async (req, res) => {
       });
       
       // Populate the conversation
-      conversation = await conversation.populate('members', 'username email profile');
+      conversation = await conversation.populate({
+        path: 'members',
+        select: 'username email profile',
+        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+      });
     }
 
     res.status(200).json(conversation);

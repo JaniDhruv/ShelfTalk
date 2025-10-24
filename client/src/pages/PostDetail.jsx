@@ -3,6 +3,43 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './PostsPage.css';
 
+const buildPresence = (user) => {
+  const profile = user?.profile;
+  if (!profile) {
+    return { isOnline: false, lastSeen: null };
+  }
+  const lastSeenDate = profile.lastSeen ? new Date(profile.lastSeen) : null;
+  const validLastSeen = lastSeenDate && !Number.isNaN(lastSeenDate.getTime()) ? lastSeenDate : null;
+  const isOnlineFlag = profile.isOnline === true || profile.isOnline === 'true' || profile.isOnline === 1;
+  return {
+    isOnline: isOnlineFlag,
+    lastSeen: validLastSeen,
+  };
+};
+
+const humanizeLastSeen = (date) => {
+  if (!date) return null;
+  const reference = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(reference.getTime())) return null;
+  const diffMs = Date.now() - reference.getTime();
+  if (diffMs < 0) return null;
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes < 1) return 'just now';
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return reference.toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
+
+const formatPresenceLabel = (presence) => {
+  if (!presence) return 'Offline';
+  if (presence.isOnline) return 'Online';
+  const humanized = humanizeLastSeen(presence.lastSeen);
+  return humanized ? `Last seen ${humanized}` : 'Offline';
+};
+
 export default function PostDetail() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -181,6 +218,9 @@ export default function PostDetail() {
     </div>
   );
 
+  const authorPresence = buildPresence(post.author);
+  const presenceLabel = formatPresenceLabel(authorPresence);
+
   return (
     <div className="social-feed-container fade-in">
       {/* Header */}
@@ -210,6 +250,13 @@ export default function PostDetail() {
                   hour: 'numeric',
                   minute: '2-digit'
                 })}</p>
+                <div
+                  className={`presence-pill ${authorPresence.isOnline ? 'online' : 'offline'}`}
+                  title={authorPresence.isOnline ? 'User is online' : (authorPresence.lastSeen ? `Last seen ${authorPresence.lastSeen.toLocaleString()}` : 'User is offline')}
+                >
+                  <span className={`status-dot ${authorPresence.isOnline ? 'online' : 'offline'}`}></span>
+                  <span>{presenceLabel}</span>
+                </div>
               </div>
             </div>
             <div className="post-time">

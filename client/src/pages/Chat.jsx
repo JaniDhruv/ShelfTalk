@@ -4,6 +4,141 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import './Chat.css';
 import ConfirmationModal from '../components/ConfirmationModal';
 
+// Helper function to check if two dates are the same day
+const isSameDay = (first, second) => {
+  if (!(first instanceof Date) || !(second instanceof Date)) return false;
+  return first.getFullYear() === second.getFullYear() &&
+    first.getMonth() === second.getMonth() &&
+    first.getDate() === second.getDate();
+};
+
+// Format date label (Today, Yesterday, or date)
+const formatDateLabel = (date) => {
+  if (!(date instanceof Date) || isNaN(date.getTime())) {
+    return '';
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const messageDate = new Date(date);
+  messageDate.setHours(0, 0, 0, 0);
+  
+  if (messageDate.getTime() === today.getTime()) {
+    return 'Today';
+  } else if (messageDate.getTime() === yesterday.getTime()) {
+    return 'Yesterday';
+  } else {
+    return messageDate.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: messageDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined 
+    });
+  }
+};
+
+// Format chat list time (for last message timestamp)
+const formatChatTime = (date) => {
+  if (!date) return '';
+  const messageDate = new Date(date);
+  if (isNaN(messageDate.getTime())) return '';
+  
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const msgDate = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate());
+  
+  // Today - show time
+  if (msgDate.getTime() === today.getTime()) {
+    return messageDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+  
+  // Yesterday
+  if (msgDate.getTime() === yesterday.getTime()) {
+    return 'Yesterday';
+  }
+  
+  // This week - show day name
+  const daysDiff = Math.floor((today - msgDate) / (1000 * 60 * 60 * 24));
+  if (daysDiff < 7) {
+    return messageDate.toLocaleDateString('en-US', { weekday: 'short' });
+  }
+  
+  // This year - show month and day
+  if (messageDate.getFullYear() === now.getFullYear()) {
+    return messageDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  
+  // Older - show full date
+  return messageDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const formatLastMessage = (chat, currentUserId) => {
+  if (!chat.lastMessage) return { text: '', prefix: null, icon: null };
+
+  let msg = chat.lastMessage;
+  const lastSenderId = chat.lastSender?._id || chat.lastSender;
+  const isOwnMessage = lastSenderId === currentUserId;
+  
+  let prefix = null;
+  let text = msg;
+  let icon = null;
+
+  // Get sender name for prefix
+  const getSenderName = () => {
+    if (isOwnMessage) return 'You';
+    if (chat.lastSender) {
+      const profile = chat.lastSender.profile;
+      if (profile && profile.fullName) return profile.fullName.split(' ')[0]; // First name only
+      return chat.lastSender.username;
+    }
+    return null;
+  };
+
+  // Detect message type
+  const isImageMsg = chat.lastMessageType === 'image';
+  const isFileMsg = chat.lastMessageType === 'file';
+  
+  // Check if message contains a link
+  const urlRegex = /(https?:\/\/[^\s]+)/;
+  const isLinkMsg = msg.startsWith('LINKMSG::') || urlRegex.test(msg);
+
+  // Handle different message types
+  if (isImageMsg) {
+    prefix = getSenderName();
+    icon = 'fa-image';
+    text = 'Photo';
+  } else if (isFileMsg) {
+    prefix = getSenderName();
+    icon = 'fa-paperclip';
+    text = msg.length > 30 ? msg.substring(0, 30) + '...' : msg;
+  } else if (isLinkMsg) {
+    prefix = getSenderName();
+    icon = 'fa-link';
+    if (msg.startsWith('LINKMSG::')) {
+      const parts = msg.split('::');
+      text = parts[1] || 'Link';
+    } else {
+      text = 'Link';
+    }
+  } else {
+    // Text message - always show prefix for consistency
+    prefix = getSenderName();
+    
+    // Truncate long messages
+    if (text.length > 35) {
+      text = text.substring(0, 35) + '...';
+    }
+  }
+
+  return { text, prefix, icon };
+};
+
 export default function Chat() {
   const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
   const { user } = useAuth();
@@ -29,7 +164,6 @@ export default function Chat() {
   const [openMsgMenuId, setOpenMsgMenuId] = useState(null);
   const messagesEndRef = useRef(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState(null);
 
   const loadMessages = useCallback(async (opts = { silent: false }) => {
     if (!activeChat?._id) return;
@@ -39,7 +173,6 @@ export default function Chat() {
       if (resp.ok) {
         const data = await resp.json();
         setMessages(data || []);
-        setLastRefresh(new Date());
       }
       const uid = user?._id || user?.id;
       const blockedBy = activeChat?.blockedBy || [];
@@ -62,25 +195,39 @@ export default function Chat() {
   const resp = await fetch(`${API_BASE}/api/chat/conversations/${uid}`);
         const data = await resp.json();
         setChats(data || []);
-        
+
         // Check if there's a conversation ID in the URL
         const conversationId = searchParams.get('conversation');
         if (conversationId) {
-          const targetChat = data.find(chat => chat._id === conversationId);
+          const targetChat = data.find(chat => chat._id === conversationId && chat.type !== 'group');
           if (targetChat) {
             setActiveChat(targetChat);
           }
         }
+
+        // Ensure active chat remains a direct message
+        setActiveChat(prev => {
+          if (prev?.type && prev.type !== 'group') return prev;
+          const fallback = (data || []).find(chat => chat.type !== 'group');
+          return fallback || null;
+        });
       } catch (e) {
         console.error('Failed to load conversations', e);
       }
     };
     loadConversations();
-  }, [user, searchParams]);
+  }, [user, searchParams, API_BASE]);
 
   useEffect(() => {
     loadMessages();
   }, [loadMessages]);
+
+  // Scroll to bottom when messages load or change
+  useEffect(() => {
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   // Auto-refresh messages every 10 seconds when a chat is active
   useEffect(() => {
@@ -218,6 +365,43 @@ export default function Chat() {
     return fullName || other.username || 'User';
   };
 
+  const getPresenceStatus = (chat) => {
+    if (!chat || chat.type === 'group') return null;
+    const other = getOtherParticipant(chat);
+    const profile = other && typeof other.profile === 'object' ? other.profile : null;
+    if (!profile) return null;
+    const lastSeen = profile.lastSeen ? new Date(profile.lastSeen) : null;
+    const validLastSeen = lastSeen && !Number.isNaN(lastSeen.getTime()) ? lastSeen : null;
+    return {
+      isOnline: Boolean(profile.isOnline),
+      lastSeen: validLastSeen,
+    };
+  };
+
+  const humanizeLastSeen = (date) => {
+    if (!date) return null;
+    const target = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(target.getTime())) return null;
+    const diffMs = Date.now() - target.getTime();
+    if (diffMs < 0) return null;
+    const diffMinutes = Math.floor(diffMs / 60000);
+    if (diffMinutes < 1) return 'just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return target.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  const getPresenceText = (presence, { compact = false } = {}) => {
+    if (!presence) return compact ? 'Offline' : 'Offline';
+    if (presence.isOnline) return compact ? 'Online' : 'Online now';
+    const humanized = humanizeLastSeen(presence.lastSeen);
+    if (!humanized) return compact ? 'Offline' : 'Offline';
+    return compact ? humanized : `Last seen ${humanized}`;
+  };
+
   const handleViewProfile = () => {
     const other = getOtherParticipant(activeChat);
     const otherId = other?._id || other;
@@ -252,7 +436,7 @@ export default function Chat() {
     }
   };
 
-  const searchForUsers = async (query) => {
+  const searchForUsers = useCallback(async (query) => {
     if (query.trim().length < 2) {
       setFoundUsers([]);
       return;
@@ -269,7 +453,7 @@ export default function Chat() {
       console.error('Error searching users:', error);
       setFoundUsers([]);
     }
-  };
+  }, [user]);
 
   const createDirectMessage = async (userId) => {
     setIsCreatingChat(true);
@@ -302,7 +486,7 @@ export default function Chat() {
 
   useEffect(() => {
     searchForUsers(searchUsers);
-  }, [searchUsers]);
+  }, [searchUsers, searchForUsers]);
 
   // Close emoji picker and kebab menus when clicking outside
   useEffect(() => {
@@ -322,8 +506,9 @@ export default function Chat() {
     };
   }, [showEmojiPicker, openMsgMenuId]);
 
-  const filteredChats = chats.filter(chat =>
-    (getDisplayName(chat)).toLowerCase().includes(searchQuery.toLowerCase())
+  const directChats = chats.filter(chat => chat.type !== 'group');
+  const filteredChats = directChats.filter(chat =>
+    getDisplayName(chat).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Common emojis for the picker
@@ -428,6 +613,9 @@ export default function Chat() {
     }
   };
 
+  const activePresence = getPresenceStatus(activeChat);
+  const activeDisplayName = getDisplayName(activeChat);
+
   return (
     <div className="chat-container">
       {/* Chat Sidebar */}
@@ -453,33 +641,62 @@ export default function Chat() {
         </div>
 
         <div className="chat-list">
-          {filteredChats.map(chat => (
-            <div
-              key={chat._id}
-              className={`chat-item ${activeChat?._id === chat._id ? 'active' : ''}`}
-              onClick={() => setActiveChat(chat)}
-            >
-              <div className="chat-avatar">
-                <div className="avatar-circle">
-                  {chat.type === 'group' ? (
-                    <i className="fas fa-users"></i>
-                  ) : (
-                      getDisplayName(chat).charAt(0).toUpperCase()
+          {filteredChats.map(chat => {
+            const displayName = getDisplayName(chat);
+            const presence = getPresenceStatus(chat);
+            const statusText = presence ? getPresenceText(presence, { compact: true }) : null;
+            const uid = user?._id || user?.id;
+            const lastMsg = formatLastMessage(chat, uid);
+            return (
+              <div
+                key={chat._id}
+                className={`chat-item ${activeChat?._id === chat._id ? 'active' : ''}`}
+                onClick={() => setActiveChat(chat)}
+              >
+                <div className="chat-avatar">
+                  <div className="avatar-circle">
+                    {chat.type === 'group' ? (
+                      <i className="fas fa-users"></i>
+                    ) : (
+                      displayName.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  {chat.type !== 'group' && presence && (
+                    <span className={`online-indicator ${presence.isOnline ? 'online' : 'offline'}`}></span>
                   )}
                 </div>
-              </div>
-              
-              <div className="chat-info">
-                <div className="chat-name-row">
-                  <h4>{getDisplayName(chat)}</h4>
-                  <span className="chat-time">{chat.updatedAt ? new Date(chat.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+
+                <div className="chat-info">
+                  <div className="chat-name-row">
+                    <h4>{displayName}</h4>
+                    <span className="chat-time">{formatChatTime(chat.updatedAt || chat.lastMessageAt)}</span>
+                  </div>
+                  {chat.type !== 'group' && presence && (
+                    <div className={`chat-status-row ${presence.isOnline ? 'online' : 'offline'}`}>
+                      <span className={`chat-status-dot ${presence.isOnline ? 'online' : 'offline'}`}></span>
+                      <span className="chat-status-text">{statusText}</span>
+                    </div>
+                  )}
+                  <div className="chat-last-message-row">
+                    <p className="chat-last-message">
+                      {lastMsg.prefix && (
+                        <span className={`preview-prefix ${lastMsg.prefix === 'You' ? 'you' : ''}`}>
+                          {lastMsg.prefix}:{' '}
+                        </span>
+                      )}
+                      {lastMsg.icon && (
+                        <i className={`fas ${lastMsg.icon}`}></i>
+                      )}
+                      <span className="preview-text">
+                        {lastMsg.text}
+                      </span>
+                    </p>
+                    {/* Debug: {JSON.stringify(lastMsg)} */}
+                  </div>
                 </div>
-                <div className="chat-last-message-row">
-                  <p className="chat-last-message">{chat.lastMessage || ''}</p>
-                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -494,15 +711,19 @@ export default function Chat() {
                   {activeChat.type === 'group' ? (
                     <i className="fas fa-users"></i>
                   ) : (
-                    (activeChat.name || (activeChat.members || []).filter(m => (m._id !== (user?._id || user?.id)))[0]?.username || 'DM')[0].toUpperCase()
+                    activeDisplayName.charAt(0).toUpperCase()
                   )}
                 </div>
+                {activeChat.type !== 'group' && activePresence && (
+                  <span className={`online-indicator ${activePresence.isOnline ? 'online' : 'offline'}`}></span>
+                )}
               </div>
               <div className="chat-main-info">
-                <h3>{getDisplayName(activeChat)}</h3>
-                {lastRefresh && (
-                  <div style={{ fontSize: 12, color: '#64748b' }}>
-                    Last updated: {lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <h3>{activeDisplayName}</h3>
+                {activeChat.type !== 'group' && activePresence && (
+                  <div className={`chat-presence ${activePresence.isOnline ? 'online' : 'offline'}`}>
+                    <span className={`chat-status-dot ${activePresence.isOnline ? 'online' : 'offline'}`}></span>
+                    <span className="chat-status-text">{getPresenceText(activePresence)}</span>
                   </div>
                 )}
               </div>
@@ -529,11 +750,24 @@ export default function Chat() {
                 </div>
               )}
               <div className="messages-list">
-                {messages.map(msg => (
-                  <div
-                    key={msg._id || msg.id}
-                    className={`message ${(msg.sender?._id || msg.senderId) === (user?._id || user?.id) ? 'own-message' : 'other-message'}`}
-                  >
+                {messages.map((msg, index) => {
+                  const currentMsgDate = msg.createdAt ? new Date(msg.createdAt) : null;
+                  const prevMsgDate = index > 0 && messages[index - 1].createdAt 
+                    ? new Date(messages[index - 1].createdAt) 
+                    : null;
+                  
+                  const showDateDivider = currentMsgDate && (!prevMsgDate || !isSameDay(currentMsgDate, prevMsgDate));
+
+                  return (
+                    <React.Fragment key={msg._id || msg.id}>
+                      {showDateDivider && (
+                        <div className="date-divider">
+                          <span className="date-label">{formatDateLabel(currentMsgDate)}</span>
+                        </div>
+                      )}
+                      <div
+                        className={`message ${(msg.sender?._id || msg.senderId) === (user?._id || user?.id) ? 'own-message' : 'other-message'}`}
+                      >
                     <div className="message-content">
                       {editingMessage === (msg._id || msg.id) ? (
                         <div style={{
@@ -657,7 +891,9 @@ export default function Chat() {
                       </div>
                     </div>
                   </div>
-                ))}
+                    </React.Fragment>
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
             </div>

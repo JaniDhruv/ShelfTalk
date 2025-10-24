@@ -5,6 +5,79 @@ import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/ConfirmationModal';
 import './PostsPage.css';
 
+// Helper function to check if two dates are the same day
+const isSameDay = (first, second) => {
+  if (!(first instanceof Date) || !(second instanceof Date)) return false;
+  return first.getFullYear() === second.getFullYear() &&
+    first.getMonth() === second.getMonth() &&
+    first.getDate() === second.getDate();
+};
+
+// Format date label (Today, Yesterday, or date)
+const formatDateLabel = (date) => {
+  if (!(date instanceof Date) || isNaN(date.getTime())) {
+    return '';
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  const messageDate = new Date(date);
+  messageDate.setHours(0, 0, 0, 0);
+  
+  if (messageDate.getTime() === today.getTime()) {
+    return 'Today';
+  } else if (messageDate.getTime() === yesterday.getTime()) {
+    return 'Yesterday';
+  } else {
+    return messageDate.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: messageDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined 
+    });
+  }
+};
+
+const buildPresence = (user) => {
+  const profile = user?.profile;
+  if (!profile) {
+    return { isOnline: false, lastSeen: null };
+  }
+  const lastSeenDate = profile.lastSeen ? new Date(profile.lastSeen) : null;
+  const validLastSeen = lastSeenDate && !Number.isNaN(lastSeenDate.getTime()) ? lastSeenDate : null;
+  const isOnlineFlag = profile.isOnline === true || profile.isOnline === 'true' || profile.isOnline === 1;
+  return {
+    isOnline: isOnlineFlag,
+    lastSeen: validLastSeen,
+  };
+};
+
+const humanizeLastSeen = (date) => {
+  if (!date) return null;
+  const reference = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(reference.getTime())) return null;
+  const diffMs = Date.now() - reference.getTime();
+  if (diffMs < 0) return null;
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes < 1) return 'just now';
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return reference.toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
+
+const formatPresenceLabel = (presence) => {
+  if (!presence) return 'Offline';
+  if (presence.isOnline) return 'Online';
+  const humanized = humanizeLastSeen(presence.lastSeen);
+  return humanized ? `Last seen ${humanized}` : 'Offline';
+};
+
 export default function GroupPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -28,21 +101,29 @@ export default function GroupPage() {
   const [chatError, setChatError] = useState('');
   const [lastRefresh, setLastRefresh] = useState(null);
   const chatMessagesEndRef = useRef(null);
+  const [editingChatMessage, setEditingChatMessage] = useState(null);
+  const [editChatContent, setEditChatContent] = useState('');
+  const [openChatMsgMenuId, setOpenChatMsgMenuId] = useState(null);
+  const [showDeleteChatMsgModal, setShowDeleteChatMsgModal] = useState(false);
+  const [deleteChatMsgTarget, setDeleteChatMsgTarget] = useState(null);
   
   // Enhanced forum states
   const [postFilter, setPostFilter] = useState('all'); // 'all', 'my', 'liked'
   const [editingPost, setEditingPost] = useState(null);
   const [editPostContent, setEditPostContent] = useState('');
   const [forumInfo, setForumInfo] = useState('');
+  // Leave group modal + ownership transfer feedback
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [leaveLoading, setLeaveLoading] = useState(false);
+  const [selectedNewOwner, setSelectedNewOwner] = useState('');
+  const [showDeleteGroupModal, setShowDeleteGroupModal] = useState(false);
+  const [deletingGroup, setDeletingGroup] = useState(false);
   const [sharePostId, setSharePostId] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [shareLoading, setShareLoading] = useState(false);
-  const [replyingTo, setReplyingTo] = useState(null);
-  const [replyText, setReplyText] = useState('');
-  const [showReplies, setShowReplies] = useState({});
-  const [editingComment, setEditingComment] = useState(null);
-  const [editCommentText, setEditCommentText] = useState('');
-  const [commentsLoading, setCommentsLoading] = useState({});
+  // Removed unused comment/reply UI states to satisfy ESLint "no-unused-vars"
+  // These are handled inside the local CommentsSection component below.
+  const [, setCommentsLoading] = useState({});
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
@@ -52,6 +133,9 @@ export default function GroupPage() {
   const isModerator = user && user._id && group && group.moderators?.some(m => (m._id || m) === user._id);
   const canModerate = isOwner || isModerator;
   const isPrivate = group && (group.visibility === 'private');
+  const ownerPresence = buildPresence(group?.createdBy);
+  const ownerPresenceLabel = formatPresenceLabel(ownerPresence);
+  const ownerDisplayName = group?.createdBy?.username || 'Unknown';
 
   const fetchGroup = useCallback(async () => {
     try {
@@ -107,7 +191,7 @@ export default function GroupPage() {
       } catch {}
     };
     loadConversations();
-  }, [user]);
+  }, [user, API_BASE]);
 
   const joinGroup = async () => {
     if (!user || !user._id) { setError('Login required'); return; }
@@ -121,14 +205,73 @@ export default function GroupPage() {
   };
 
   const leaveGroup = async () => {
-    if (!user || !user._id) { setError('Login required'); return; }
+    if (!user || !user._id) { 
+      setError('Login required'); 
+      return; 
+    }
+    if (leaveLoading) return;
+    
+    setLeaveLoading(true);
     try {
       const res = await fetch(`http://localhost:5000/api/groups/${id}/remove-member`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user._id })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId: user._id, 
+          newOwnerId: isOwner ? selectedNewOwner || undefined : undefined 
+        })
       });
-      if (!res.ok) throw new Error('Failed to leave');
-      await fetchGroup();
-    } catch (e) { setError(e.message); }
+      
+      let data = {};
+      try { 
+        data = await res.json(); 
+      } catch (e) {
+        console.error('Failed to parse response:', e);
+      }
+      
+      if (!res.ok) {
+        setError(data.message || 'Unable to leave group.');
+        return;
+      }
+      
+      if (data.newOwner) {
+        setForumInfo(`Ownership transferred to ${data.group?.createdBy?.username || 'new owner'}. You have left the group.`);
+      } else {
+        setForumInfo('You have left the group.');
+      }
+      
+      setTimeout(() => {
+        navigate('/groups');
+      }, 1400);
+    } catch (e) {
+      setError('Error leaving group: ' + e.message);
+    } finally {
+      setShowLeaveModal(false);
+      setLeaveLoading(false);
+    }
+  };
+
+  const openLeaveModal = () => {
+    if (!user || !user._id) { 
+      setError('Login required'); 
+      return; 
+    }
+    // Reset state when opening modal
+    setSelectedNewOwner('');
+    setError('');
+    setForumInfo('');
+    setShowLeaveModal(true);
+  };
+
+  const openDeleteGroupModal = () => {
+    if (!isOwner) {
+      setError('Only the group owner can delete the group');
+      return;
+    }
+    // Reset state when opening modal
+    setError('');
+    setForumInfo('');
+    setShowDeleteGroupModal(true);
   };
 
   const createPost = async (e) => {
@@ -200,11 +343,59 @@ export default function GroupPage() {
     }
   };
 
+  // Group deletion (owner only) -------------------------------------------------
+  const handleDeleteGroup = async () => {
+    if (!isOwner) {
+      setError('Only the group owner can delete the group');
+      return;
+    }
+    if (deletingGroup) return;
+    
+    setDeletingGroup(true);
+    setError(''); // Clear any previous errors
+    
+    try {
+      const resp = await fetch(`http://localhost:5000/api/groups/${id}`, { 
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      let data = {};
+      try { 
+        data = await resp.json(); 
+      } catch (e) {
+        console.error('Failed to parse response:', e);
+      }
+      
+      if (!resp.ok) {
+        throw new Error(data.message || 'Failed to delete group');
+      }
+      
+      // Show success message briefly before navigating
+      setForumInfo('Group deleted successfully');
+      setTimeout(() => {
+        navigate('/groups');
+      }, 1000);
+    } catch (e) {
+      setError(e.message || 'Failed to delete group');
+    } finally {
+      setDeletingGroup(false);
+      setShowDeleteGroupModal(false);
+    }
+  };
+
   // Comments functions
   const fetchComments = async (postId) => {
     try {
       setCommentsLoading(prev => ({ ...prev, [postId]: true }));
-      const res = await fetch(`http://localhost:5000/api/comments/post/${postId}`);
+      const viewerQuery = user?._id ? `?viewerId=${user._id}` : '';
+      const res = await fetch(`http://localhost:5000/api/comments/post/${postId}${viewerQuery}`);
+      if (res.status === 403) {
+        const payload = await res.json().catch(() => ({}));
+        setCommentsByPost(prev => ({ ...prev, [postId]: [] }));
+        setError(payload?.message || 'Comments are restricted to group members.');
+        return;
+      }
       if (!res.ok) throw new Error('Failed to load comments');
       const data = await res.json();
       setCommentsByPost(prev => ({ ...prev, [postId]: data }));
@@ -266,7 +457,32 @@ export default function GroupPage() {
   };
 
   // Group Chat Functions
-  const initializeGroupChat = async () => {
+  const fetchChatMessages = useCallback(async () => {
+    if (!group?._id || !isMember || !user?._id) return;
+    try {
+      setLoadingChat(true);
+      setChatError('');
+      const resp = await fetch(`${API_BASE}/api/chat/groups/${group._id}/messages?userId=${user._id}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        setChatMessages(data || []);
+        setLastRefresh(new Date());
+      } else {
+        try {
+          const error = await resp.json();
+          setChatError(error.message || 'Failed to load chat messages');
+        } catch {
+          setChatError('Failed to load chat messages');
+        }
+      }
+    } catch (e) {
+      setChatError('Connection error. Please check your internet connection.');
+    } finally {
+      setLoadingChat(false);
+    }
+  }, [group?._id, isMember, user?._id, API_BASE]);
+
+  const initializeGroupChat = useCallback(async () => {
     if (!group?._id || !isMember || !user?._id) return;
     
     try {
@@ -290,32 +506,7 @@ export default function GroupPage() {
     } catch (e) {
       setError('Failed to initialize group chat');
     }
-  };
-
-  const fetchChatMessages = async () => {
-    if (!group?._id || !isMember || !user?._id) return;
-    try {
-      setLoadingChat(true);
-      setChatError('');
-      const resp = await fetch(`${API_BASE}/api/chat/groups/${group._id}/messages?userId=${user._id}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        setChatMessages(data || []);
-        setLastRefresh(new Date());
-      } else {
-        try {
-          const error = await resp.json();
-          setChatError(error.message || 'Failed to load chat messages');
-        } catch {
-          setChatError('Failed to load chat messages');
-        }
-      }
-    } catch (e) {
-      setChatError('Connection error. Please check your internet connection.');
-    } finally {
-      setLoadingChat(false);
-    }
-  };
+  }, [group?._id, isMember, user?._id, API_BASE, fetchChatMessages]);
 
   const sendChatMessage = async (e) => {
     e.preventDefault();
@@ -356,6 +547,83 @@ export default function GroupPage() {
     }
   };
 
+  const handleEditChatMessage = (message) => {
+    // Only allow editing text messages
+    if (message.type === 'text') {
+      setEditingChatMessage(message._id || message.id);
+      setEditChatContent(message.content || message.message);
+    }
+  };
+
+  const handleSaveChatEdit = async (messageId) => {
+    if (!editChatContent.trim()) {
+      alert('Message content cannot be empty');
+      return;
+    }
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/chat/messages/${messageId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          content: editChatContent.trim(),
+          senderId: user._id 
+        })
+      });
+
+      if (resp.ok) {
+        const updated = await resp.json();
+        setChatMessages(prev => prev.map(msg => 
+          (msg._id || msg.id) === messageId ? updated : msg
+        ));
+        setEditingChatMessage(null);
+        setEditChatContent('');
+      } else {
+        const err = await resp.json();
+        alert(err?.message || 'Failed to update message');
+      }
+    } catch (e) {
+      console.error('Failed to update message', e);
+      alert('Failed to update message');
+    }
+  };
+
+  const handleCancelChatEdit = () => {
+    setEditingChatMessage(null);
+    setEditChatContent('');
+  };
+
+  const handleDeleteChatMessage = (messageId) => {
+    setDeleteChatMsgTarget(messageId);
+    setShowDeleteChatMsgModal(true);
+  };
+
+  const confirmDeleteChatMessage = async () => {
+    if (!deleteChatMsgTarget) return;
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/chat/messages/${deleteChatMsgTarget}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senderId: user._id })
+      });
+
+      if (resp.ok) {
+        // Remove message from local state
+        setChatMessages(prev => prev.filter(msg => (msg._id || msg.id) !== deleteChatMsgTarget));
+      } else {
+        const err = await resp.json();
+        alert(err?.message || 'Failed to delete message');
+      }
+    } catch (e) {
+      console.error('Failed to delete message', e);
+      alert('Failed to delete message');
+    } finally {
+      setShowDeleteChatMsgModal(false);
+      setDeleteChatMsgTarget(null);
+    }
+  };
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (chatMessagesEndRef.current) {
@@ -368,7 +636,7 @@ export default function GroupPage() {
     if (activeTab === 'chat' && group && isMember) {
       initializeGroupChat();
     }
-  }, [activeTab, group, isMember]);
+  }, [activeTab, group, isMember, initializeGroupChat]);
 
   // Auto-refresh messages every 10 seconds when chat tab is active
   useEffect(() => {
@@ -382,10 +650,11 @@ export default function GroupPage() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [activeTab, group, isMember, loadingChat]);
+  }, [activeTab, group, isMember, loadingChat, fetchChatMessages]);
 
   return (
-  <div style={{ minHeight: '100vh', backgroundColor: '#F9F4E8' }}>
+    <>
+    <div style={{ minHeight: '100vh', backgroundColor: '#F9F4E8' }}>
       {/* Page Header */}
       <div style={{ 
         background: 'linear-gradient(135deg, #8B4513 0%, #A0522D 20%, #CD853F 60%, #DEB887 90%, #F5DEB3 100%)', 
@@ -549,7 +818,7 @@ export default function GroupPage() {
                   fontSize: '14px', 
                   color: '#475569' 
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <div style={{
                       background: 'rgba(184, 134, 11, 0.10)',
                       color: '#B8860B',
@@ -577,7 +846,14 @@ export default function GroupPage() {
                     }}>
                       <i className="fas fa-user-crown" style={{ fontSize: '12px' }}></i>
                     </div>
-                    <span>Created by <strong>{group.createdBy?.username || 'Unknown'}</strong></span>
+                    <span>Owned by <strong>{ownerDisplayName}</strong></span>
+                    <span
+                      className={`presence-pill ${ownerPresence.isOnline ? 'online' : 'offline'}`}
+                      title={ownerPresence.isOnline ? 'User is online' : (ownerPresence.lastSeen ? `Last seen ${ownerPresence.lastSeen.toLocaleString()}` : 'User is offline')}
+                    >
+                      <span className={`status-dot ${ownerPresence.isOnline ? 'online' : 'offline'}`}></span>
+                      {ownerPresenceLabel}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -611,33 +887,63 @@ export default function GroupPage() {
                     {isPrivate ? 'Request to Join' : 'Join Group'}
                   </button>
                 ) : (
-                  <button 
-                    onClick={leaveGroup} 
-                    style={{
-                      background: '#f8f9fa',
-                      color: '#6b7280',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '25px',
-                      padding: '12px 24px',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseOver={(e) => {
-                      e.target.style.background = '#fee2e2';
-                      e.target.style.color = '#8B3A3A';
-                      e.target.style.borderColor = 'rgba(139, 58, 58, 0.30)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.target.style.background = '#f8f9fa';
-                      e.target.style.color = '#6b7280';
-                      e.target.style.borderColor = '#e5e7eb';
-                    }}
-                  >
-                    <i className="fas fa-sign-out-alt" style={{ marginRight: '8px' }}></i>
-                    Leave Group
-                  </button>
+                  <>
+                    <button 
+                      onClick={openLeaveModal} 
+                      style={{
+                        background: '#f8f9fa',
+                        color: '#6b7280',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '25px',
+                        padding: '12px 24px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseOver={(e) => {
+                        e.target.style.background = '#fee2e2';
+                        e.target.style.color = '#8B3A3A';
+                        e.target.style.borderColor = 'rgba(139, 58, 58, 0.30)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.target.style.background = '#f8f9fa';
+                        e.target.style.color = '#6b7280';
+                        e.target.style.borderColor = '#e5e7eb';
+                      }}
+                    >
+                      <i className="fas fa-sign-out-alt" style={{ marginRight: '8px' }}></i>
+                      Leave Group
+                    </button>
+                    {isOwner && (
+                      <button
+                        onClick={openDeleteGroupModal}
+                        style={{
+                          background: 'linear-gradient(135deg,#8B3A3A,#B8860B)',
+                          color: '#FFFEF7',
+                          border: 'none',
+                          borderRadius: '25px',
+                          padding: '12px 24px',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          fontSize: '14px',
+                          boxShadow: '0 4px 12px rgba(139,58,58,0.30)',
+                          transition: 'all 0.3s ease'
+                        }}
+                        onMouseOver={(e) => {
+                          e.target.style.transform = 'translateY(-2px)';
+                          e.target.style.boxShadow = '0 6px 16px rgba(139,58,58,0.40)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.transform = 'translateY(0)';
+                          e.target.style.boxShadow = '0 4px 12px rgba(139,58,58,0.30)';
+                        }}
+                      >
+                        <i className="fas fa-trash" style={{ marginRight: 8 }}></i>
+                        Delete Group
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -674,88 +980,90 @@ export default function GroupPage() {
                     <i className="fas fa-user-clock" style={{ marginRight: '8px', color: '#B8860B' }}></i>
                     Join Requests
                   </div>
-                  {(group.joinRequests || []).length === 0 ? (
-                    <div style={{ color: '#64748b', fontSize: '14px', fontStyle: 'italic' }}>No pending requests</div>
-                  ) : (
-                    (group.joinRequests || []).map(r => (
-                      <div key={r._id || r} style={{ 
-                        display: 'flex', 
-                        gap: '12px', 
-                        alignItems: 'center', 
-                        marginBottom: '16px',
-                        padding: '12px',
-                        background: 'white',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(184, 134, 11, 0.25)'
-                      }}>
-                        <div style={{ 
-                          width: 36, 
-                          height: 36, 
-                          borderRadius: '50%', 
-                          background: 'linear-gradient(135deg, #8B4513 0%, #A0522D 20%, #CD853F 60%, #DEB887 90%, #F5DEB3 100%)', 
-                          color: '#FFFEF7', 
+                  <div className="sm-scroll-requests" style={{ maxHeight: 260, overflowY: 'auto', paddingRight: 4 }}>
+                    {(group.joinRequests || []).length === 0 ? (
+                      <div style={{ color: '#64748b', fontSize: '14px', fontStyle: 'italic' }}>No pending requests</div>
+                    ) : (
+                      (group.joinRequests || []).map(r => (
+                        <div key={r._id || r} style={{ 
                           display: 'flex', 
+                          gap: '12px', 
                           alignItems: 'center', 
-                          justifyContent: 'center', 
-                          fontSize: '14px', 
-                          fontWeight: 'bold' 
+                          marginBottom: '16px',
+                          padding: '12px',
+                          background: 'white',
+                          borderRadius: '8px',
+                          border: '1px solid rgba(184, 134, 11, 0.25)'
                         }}>
-                          {((r.username || '?')[0] || '?').toUpperCase()}
-                        </div>
-                        <div style={{ flex: 1, fontWeight: '500' }}>{r.username || 'User'}</div>
-                        {isOwner && (
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button 
-                              onClick={async () => { 
-                                await fetch(`http://localhost:5000/api/groups/${id}/approve`, { 
-                                  method: 'POST', 
-                                  headers: { 'Content-Type': 'application/json' }, 
-                                  body: JSON.stringify({ requesterId: r._id || r, actorId: user._id }) 
-                                }); 
-                                await fetchGroup(); 
-                              }} 
-                              style={{ 
-                                background: '#6B8E5A', 
-                                color: '#FFFEF7', 
-                                border: 'none', 
-                                borderRadius: '6px', 
-                                padding: '6px 12px', 
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: '500'
-                              }}
-                            >
-                              <i className="fas fa-check" style={{ marginRight: '4px' }}></i>
-                              Approve
-                            </button>
-                            <button 
-                              onClick={async () => { 
-                                await fetch(`http://localhost:5000/api/groups/${id}/decline`, { 
-                                  method: 'POST', 
-                                  headers: { 'Content-Type': 'application/json' }, 
-                                  body: JSON.stringify({ requesterId: r._id || r, actorId: user._id }) 
-                                }); 
-                                await fetchGroup(); 
-                              }} 
-                              style={{ 
-                                background: '#8B3A3A', 
-                                color: '#FFFEF7', 
-                                border: 'none', 
-                                borderRadius: '6px', 
-                                padding: '6px 12px', 
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: '500'
-                              }}
-                            >
-                              <i className="fas fa-times" style={{ marginRight: '4px' }}></i>
-                              Decline
-                            </button>
+                          <div style={{ 
+                            width: 36, 
+                            height: 36, 
+                            borderRadius: '50%', 
+                            background: 'linear-gradient(135deg, #8B4513 0%, #A0522D 20%, #CD853F 60%, #DEB887 90%, #F5DEB3 100%)', 
+                            color: '#FFFEF7', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            fontSize: '14px', 
+                            fontWeight: 'bold' 
+                          }}>
+                            {((r.username || '?')[0] || '?').toUpperCase()}
                           </div>
-                        )}
-                      </div>
-                    ))
-                  )}
+                          <div style={{ flex: 1, fontWeight: '500' }}>{r.username || 'User'}</div>
+                          {isOwner && (
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button 
+                                onClick={async () => { 
+                                  await fetch(`http://localhost:5000/api/groups/${id}/approve`, { 
+                                    method: 'POST', 
+                                    headers: { 'Content-Type': 'application/json' }, 
+                                    body: JSON.stringify({ requesterId: r._id || r, actorId: user._id }) 
+                                  }); 
+                                  await fetchGroup(); 
+                                }} 
+                                style={{ 
+                                  background: '#6B8E5A', 
+                                  color: '#FFFEF7', 
+                                  border: 'none', 
+                                  borderRadius: '6px', 
+                                  padding: '6px 12px', 
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  fontWeight: '500'
+                                }}
+                              >
+                                <i className="fas fa-check" style={{ marginRight: '4px' }}></i>
+                                Approve
+                              </button>
+                              <button 
+                                onClick={async () => { 
+                                  await fetch(`http://localhost:5000/api/groups/${id}/decline`, { 
+                                    method: 'POST', 
+                                    headers: { 'Content-Type': 'application/json' }, 
+                                    body: JSON.stringify({ requesterId: r._id || r, actorId: user._id }) 
+                                  }); 
+                                  await fetchGroup(); 
+                                }} 
+                                style={{ 
+                                  background: '#8B3A3A', 
+                                  color: '#FFFEF7', 
+                                  border: 'none', 
+                                  borderRadius: '6px', 
+                                  padding: '6px 12px', 
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  fontWeight: '500'
+                                }}
+                              >
+                                <i className="fas fa-times" style={{ marginRight: '4px' }}></i>
+                                Decline
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
                 
                 <div style={{ 
@@ -768,27 +1076,29 @@ export default function GroupPage() {
                     <i className="fas fa-paper-plane" style={{ marginRight: '8px', color: '#B8860B' }}></i>
                     Sent Invitations
                   </div>
-                  {(group.invites || []).length === 0 ? (
-                    <div style={{ color: '#64748b', fontSize: '14px', fontStyle: 'italic' }}>No pending invites</div>
-                  ) : (
-                    (group.invites || []).map(inv => (
-                      <div key={(inv.to?._id || inv.to) + '-' + (inv.from?._id || inv.from)} style={{ 
-                        display: 'flex', 
-                        gap: '12px', 
-                        alignItems: 'center', 
-                        marginBottom: '12px',
-                        padding: '12px',
-                        background: 'white',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(114, 47, 55, 0.20)'
-                      }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: '500', fontSize: '14px' }}>To: {inv.to?.username || inv.to}</div>
-                          <div style={{ fontSize: '12px', color: '#64748b' }}>From: {inv.from?.username || inv.from}</div>
+                  <div className="sm-scroll-requests" style={{ maxHeight: 260, overflowY: 'auto', paddingRight: 4 }}>
+                    {(group.invites || []).length === 0 ? (
+                      <div style={{ color: '#64748b', fontSize: '14px', fontStyle: 'italic' }}>No pending invites</div>
+                    ) : (
+                      (group.invites || []).map(inv => (
+                        <div key={(inv.to?._id || inv.to) + '-' + (inv.from?._id || inv.from)} style={{ 
+                          display: 'flex', 
+                          gap: '12px', 
+                          alignItems: 'center', 
+                          marginBottom: '12px',
+                          padding: '12px',
+                          background: 'white',
+                          borderRadius: '8px',
+                          border: '1px solid rgba(114, 47, 55, 0.20)'
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: '500', fontSize: '14px' }}>To: {inv.to?.username || inv.to}</div>
+                            <div style={{ fontSize: '12px', color: '#64748b' }}>From: {inv.from?.username || inv.from}</div>
+                          </div>
                         </div>
-                      </div>
-                    ))
-                  )}
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1597,36 +1907,229 @@ export default function GroupPage() {
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {chatMessages.map(msg => (
-                          <div key={msg._id} style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignSelf: (msg.sender?._id || msg.senderId) === user?._id ? 'flex-end' : 'flex-start',
-                            maxWidth: '70%'
-                          }}>
-                            <div style={{
-                              background: (msg.sender?._id || msg.senderId) === user?._id 
-                                ? 'linear-gradient(135deg, #B8860B, #DAA520)' 
-                                : 'white',
-                              color: (msg.sender?._id || msg.senderId) === user?._id ? 'white' : '#111827',
-                              padding: '12px 16px',
-                              borderRadius: '18px',
-                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                              border: (msg.sender?._id || msg.senderId) === user?._id ? 'none' : '1px solid #e5e7eb',
-                              wordWrap: 'break-word'
-                            }}>
-                              {msg.content}
-                            </div>
-                            <div style={{
-                              fontSize: '12px',
-                              color: '#64748b',
-                              marginTop: '4px',
-                              textAlign: (msg.sender?._id || msg.senderId) === user?._id ? 'right' : 'left'
-                            }}>
-                              {(msg.sender?._id || msg.senderId) === user?._id ? 'You' : (msg.sender?.username || 'User')} • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </div>
-                          </div>
-                        ))}
+                        {chatMessages.map((msg, index) => {
+                          const currentMsgDate = msg.createdAt ? new Date(msg.createdAt) : null;
+                          const prevMsgDate = index > 0 && chatMessages[index - 1].createdAt 
+                            ? new Date(chatMessages[index - 1].createdAt) 
+                            : null;
+                          
+                          const showDateDivider = currentMsgDate && (!prevMsgDate || !isSameDay(currentMsgDate, prevMsgDate));
+
+                          return (
+                            <React.Fragment key={msg._id}>
+                              {showDateDivider && (
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  margin: '16px 0',
+                                  textAlign: 'center'
+                                }}>
+                                  <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, rgba(184, 134, 11, 0.3), transparent)' }}></div>
+                                  <span style={{
+                                    padding: '4px 16px',
+                                    background: 'linear-gradient(135deg, rgba(184, 134, 11, 0.1), rgba(218, 165, 32, 0.1))',
+                                    border: '1px solid rgba(184, 134, 11, 0.3)',
+                                    borderRadius: '20px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: '#B8860B',
+                                    margin: '0 12px',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {formatDateLabel(currentMsgDate)}
+                                  </span>
+                                  <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, rgba(184, 134, 11, 0.3), transparent)' }}></div>
+                                </div>
+                              )}
+                              <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignSelf: (msg.sender?._id || msg.senderId) === user?._id ? 'flex-end' : 'flex-start',
+                                maxWidth: '70%',
+                                position: 'relative'
+                              }}>
+                                {editingChatMessage === (msg._id || msg.id) ? (
+                                  <div style={{
+                                    background: 'rgba(255, 255, 255, 0.95)',
+                                    padding: '12px',
+                                    borderRadius: '12px',
+                                    border: '2px solid #B8860B',
+                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+                                  }}>
+                                    <textarea
+                                      value={editChatContent}
+                                      onChange={(e) => setEditChatContent(e.target.value)}
+                                      style={{
+                                        width: '100%',
+                                        minHeight: '60px',
+                                        padding: '8px',
+                                        border: '1px solid #e5e7eb',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        resize: 'vertical',
+                                        fontFamily: 'inherit'
+                                      }}
+                                    />
+                                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' }}>
+                                      <button
+                                        onClick={() => handleSaveChatEdit(msg._id || msg.id)}
+                                        style={{
+                                          background: '#B8860B',
+                                          color: 'white',
+                                          border: 'none',
+                                          padding: '6px 16px',
+                                          borderRadius: '6px',
+                                          cursor: 'pointer',
+                                          fontSize: '12px',
+                                          fontWeight: '600'
+                                        }}
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={handleCancelChatEdit}
+                                        style={{
+                                          background: '#6b7280',
+                                          color: 'white',
+                                          border: 'none',
+                                          padding: '6px 16px',
+                                          borderRadius: '6px',
+                                          cursor: 'pointer',
+                                          fontSize: '12px',
+                                          fontWeight: '600'
+                                        }}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div style={{
+                                      background: (msg.sender?._id || msg.senderId) === user?._id 
+                                        ? 'linear-gradient(135deg, #B8860B, #DAA520)' 
+                                        : 'white',
+                                      color: (msg.sender?._id || msg.senderId) === user?._id ? 'white' : '#111827',
+                                      padding: '12px 16px',
+                                      borderRadius: '18px',
+                                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                                      border: (msg.sender?._id || msg.senderId) === user?._id ? 'none' : '1px solid #e5e7eb',
+                                      wordWrap: 'break-word'
+                                    }}>
+                                      {msg.content}
+                                    </div>
+                                    <div style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '8px',
+                                      marginTop: '4px',
+                                      justifyContent: (msg.sender?._id || msg.senderId) === user?._id ? 'flex-end' : 'flex-start'
+                                    }}>
+                                      <div style={{
+                                        fontSize: '12px',
+                                        color: '#64748b'
+                                      }}>
+                                        {(msg.sender?._id || msg.senderId) === user?._id ? 'You' : (msg.sender?.username || 'User')} • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </div>
+                                      {(msg.sender?._id || msg.senderId) === user?._id && (
+                                        <div style={{ position: 'relative' }}>
+                                          <button
+                                            onClick={() => setOpenChatMsgMenuId(prev => prev === (msg._id || msg.id) ? null : (msg._id || msg.id))}
+                                            style={{
+                                              background: 'none',
+                                              border: 'none',
+                                              color: '#64748b',
+                                              cursor: 'pointer',
+                                              padding: '4px 8px',
+                                              borderRadius: '4px',
+                                              fontSize: '12px',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              transition: 'all 0.2s'
+                                            }}
+                                            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                                            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                                            title="Message options"
+                                          >
+                                            <i className="fas fa-ellipsis-vertical"></i>
+                                          </button>
+                                          {openChatMsgMenuId === (msg._id || msg.id) && (
+                                            <div style={{
+                                              position: 'absolute',
+                                              top: '100%',
+                                              right: 0,
+                                              background: 'white',
+                                              border: '1px solid #e5e7eb',
+                                              borderRadius: '8px',
+                                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                                              zIndex: 100,
+                                              minWidth: '120px',
+                                              marginTop: '4px'
+                                            }}>
+                                              {msg.type === 'text' && (
+                                                <button
+                                                  onClick={() => {
+                                                    handleEditChatMessage(msg);
+                                                    setOpenChatMsgMenuId(null);
+                                                  }}
+                                                  style={{
+                                                    width: '100%',
+                                                    padding: '10px 16px',
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    textAlign: 'left',
+                                                    cursor: 'pointer',
+                                                    fontSize: '13px',
+                                                    color: '#374151',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    transition: 'background 0.2s'
+                                                  }}
+                                                  onMouseOver={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                                                  onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                                                >
+                                                  <i className="fas fa-pen" style={{ fontSize: '12px' }}></i>
+                                                  Edit
+                                                </button>
+                                              )}
+                                              <button
+                                                onClick={() => {
+                                                  handleDeleteChatMessage(msg._id || msg.id);
+                                                  setOpenChatMsgMenuId(null);
+                                                }}
+                                                style={{
+                                                  width: '100%',
+                                                  padding: '10px 16px',
+                                                  background: 'none',
+                                                  border: 'none',
+                                                  borderTop: msg.type === 'text' ? '1px solid #e5e7eb' : 'none',
+                                                  textAlign: 'left',
+                                                  cursor: 'pointer',
+                                                  fontSize: '13px',
+                                                  color: '#dc2626',
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: '8px',
+                                                  transition: 'background 0.2s'
+                                                }}
+                                                onMouseOver={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                                onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                                              >
+                                                <i className="fas fa-trash" style={{ fontSize: '12px' }}></i>
+                                                Delete
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </React.Fragment>
+                          );
+                        })}
                         <div ref={chatMessagesEndRef} />
                       </div>
                     )}
@@ -1744,6 +2247,8 @@ export default function GroupPage() {
                       const isOwner = (group.createdBy?._id || group.createdBy) === (m._id || m);
                       const isMod = group.moderators?.some(mod => (mod._id || mod) === (m._id || m));
                       const role = isOwner ? 'Owner' : isMod ? 'Moderator' : 'Member';
+                      const presence = buildPresence(m);
+                      const presenceLabel = formatPresenceLabel(presence);
 
                       return (
                         <div key={m._id || m} style={{
@@ -1795,6 +2300,16 @@ export default function GroupPage() {
                             }}>
                               <i className={`fas fa-${isOwner ? 'crown' : isMod ? 'shield-alt' : 'user'}`}></i>
                               {role}
+                            </div>
+                            <div style={{ marginTop: 6 }}>
+                              <span
+                                className={`presence-pill ${presence.isOnline ? 'online' : 'offline'}`}
+                                title={presence.isOnline ? 'User is online' : (presence.lastSeen ? `Last seen ${presence.lastSeen.toLocaleString()}` : 'User is offline')}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                              >
+                                <span className={`status-dot ${presence.isOnline ? 'online' : 'offline'}`}></span>
+                                {presenceLabel}
+                              </span>
                             </div>
                           </div>
 
@@ -2023,6 +2538,120 @@ export default function GroupPage() {
           type="danger"
         />
 
+        {/* Leave Group Modal */}
+        {showLeaveModal && createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={() => !leaveLoading && setShowLeaveModal(false)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 2147483647, padding: '16px'
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'white', borderRadius: '14px', width: '100%', maxWidth: 480,
+                boxShadow: '0 10px 30px rgba(0,0,0,0.25)', overflow: 'hidden', position: 'relative'
+              }}
+            >
+              <div style={{
+                background: 'linear-gradient(135deg,#8B3A3A,#B8860B)',
+                color: '#FFFEF7', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+                  <i className="fas fa-sign-out-alt" style={{ marginRight: 8 }}></i>
+                  Leave Group
+                </h3>
+                <button
+                  onClick={() => !leaveLoading && setShowLeaveModal(false)}
+                  style={{ background: 'none', border: 'none', color: '#FFFEF7', cursor: 'pointer', fontSize: 18 }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div style={{ padding: 20 }}>
+                {error && (
+                  <div style={{
+                    background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c',
+                    padding: '10px 12px', borderRadius: 8, fontSize: 13, marginBottom: 12
+                  }}>
+                    {error}
+                  </div>
+                )}
+                {isOwner ? (
+                  <>
+                    <p style={{ marginTop: 0, color: '#111827', lineHeight: 1.5 }}>
+                      You are the current <strong>owner</strong> of <strong>{group?.name}</strong>. Choose a moderator to become the new owner before leaving.
+                    </p>
+                    {(!group?.moderators || group.moderators.length === 0) && (
+                      <div style={{
+                        background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c',
+                        padding: '10px 12px', borderRadius: 8, fontSize: 13, marginBottom: 12
+                      }}>
+                        No moderators available. Add a moderator in the Members tab before leaving.
+                      </div>
+                    )}
+                    {group?.moderators?.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                          Select new owner
+                        </label>
+                        <select
+                          value={selectedNewOwner}
+                          onChange={e => setSelectedNewOwner(e.target.value)}
+                          style={{
+                            width: '100%', padding: '10px 12px', borderRadius: 8,
+                            border: '1px solid #e2e8f0', fontSize: 14
+                          }}
+                        >
+                          <option value="">-- Choose moderator --</option>
+                          {group.moderators.map(m => (
+                            <option key={m._id || m} value={m._id || m}>
+                              {m.username || m._id || m}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p style={{ marginTop: 0, color: '#111827', lineHeight: 1.5 }}>
+                    Are you sure you want to leave <strong>{group?.name}</strong>? You will lose access to its posts and chat.
+                  </p>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
+                  <button
+                    disabled={leaveLoading}
+                    onClick={() => setShowLeaveModal(false)}
+                    style={{
+                      background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#475569',
+                      padding: '10px 18px', borderRadius: 9999, cursor: leaveLoading ? 'not-allowed' : 'pointer',
+                      fontSize: 14, fontWeight: 600
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={leaveLoading || (isOwner && ((!group?.moderators || group.moderators.length === 0) || !selectedNewOwner))}
+                    onClick={leaveGroup}
+                    style={{
+                      background: (leaveLoading || (isOwner && ((!group?.moderators || group.moderators.length === 0) || !selectedNewOwner))) ? '#e5e7eb' : 'linear-gradient(135deg,#8B3A3A,#B8860B)',
+                      border: 'none', color: '#FFFEF7', padding: '10px 20px', borderRadius: 9999,
+                      cursor: (leaveLoading || (isOwner && ((!group?.moderators || group.moderators.length === 0) || !selectedNewOwner))) ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600,
+                      display: 'flex', alignItems: 'center', gap: 8
+                    }}
+                  >
+                    {leaveLoading && <i className="fas fa-spinner fa-spin"></i>}
+                    {leaveLoading ? 'Leaving...' : isOwner ? 'Transfer & Leave' : 'Leave Group'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>, document.body)}
+
       </div>
       {/* Share Modal */}
       {sharePostId && createPortal(
@@ -2123,7 +2752,46 @@ export default function GroupPage() {
         cancelText="Cancel"
         type="danger"
       />
+
+      {/* Chat Message Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteChatMsgModal}
+        onClose={() => { setShowDeleteChatMsgModal(false); setDeleteChatMsgTarget(null); }}
+        onConfirm={confirmDeleteChatMessage}
+        title="Delete Message"
+        message="Are you sure you want to delete this message? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
+    {/* Delete Group Modal Portal */}
+    {showDeleteGroupModal && isOwner && createPortal(
+      <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999 }} onClick={()=> !deletingGroup && setShowDeleteGroupModal(false)}>
+        <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:480, boxShadow:'0 20px 40px -8px rgba(0,0,0,0.35)', overflow:'hidden' }} onClick={(e)=>e.stopPropagation()}>
+          <header style={{ background:'linear-gradient(135deg,#8B3A3A,#B8860B)', color:'#FFFEF7', padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <h3 style={{ margin:0, fontSize:18, fontWeight:700 }}><i className="fas fa-trash" style={{ marginRight:8 }}></i>Delete Group</h3>
+            <button type="button" disabled={deletingGroup} onClick={()=>setShowDeleteGroupModal(false)} style={{ background:'none', border:'none', color:'#FFFEF7', cursor: deletingGroup? 'not-allowed':'pointer', fontSize:18 }} aria-label="Close delete dialog"><i className="fas fa-times" /></button>
+          </header>
+          <div style={{ padding:24 }}>
+            <p style={{ marginTop:0, lineHeight:1.55, color:'#111827', fontSize:14 }}>This will permanently delete the group <strong>{group?.name}</strong> and its associated discussions. This action cannot be undone.</p>
+            {error && (
+              <div style={{ background:'#FDECEC', color:'#8B3A3A', border:'1px solid rgba(139,58,58,0.30)', padding:'8px 12px', borderRadius:8, fontSize:12, marginBottom:12 }}>
+                {error}
+              </div>
+            )}
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:12 }}>
+              <button type="button" disabled={deletingGroup} onClick={()=>setShowDeleteGroupModal(false)} style={{ background:'#f1f5f9', border:'1px solid #e2e8f0', color:'#475569', padding:'10px 18px', borderRadius:9999, cursor:deletingGroup?'not-allowed':'pointer', fontSize:14, fontWeight:600 }}>Cancel</button>
+              <button type="button" disabled={deletingGroup} onClick={handleDeleteGroup} style={{ background: deletingGroup ? '#e5e7eb' : 'linear-gradient(135deg,#8B3A3A,#B8860B)', border:'none', color:'#FFFEF7', padding:'10px 22px', borderRadius:9999, cursor:deletingGroup?'not-allowed':'pointer', fontSize:14, fontWeight:600, display:'flex', alignItems:'center', gap:8 }}>
+                {deletingGroup && <i className="fas fa-spinner fa-spin" />}
+                {deletingGroup ? 'Deleting…' : 'Delete Group'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>, document.body)
+    }
+    </>
   );
 }
 
@@ -2284,20 +2952,12 @@ function InviteSearch({ group, groupId, actorId, onDone }) {
 }
 
 function CommentsSection({ postId, comments, onAddComment, onLikeComment, onDeleteComment, onEditComment, canModerate, currentUserId }) {
-  const [newComment, setNewComment] = useState('');
   const [editingComment, setEditingComment] = useState(null);
   const [editText, setEditText] = useState('');
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
-  const [newReplyText, setNewReplyText] = useState('');
   const [showReplies, setShowReplies] = useState({});
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    onAddComment(postId, newComment.trim());
-    setNewComment('');
-  };
+  // Submit handled inline via button click in UI; remove unused handleSubmit
 
   const handleEditComment = (comment) => {
     setEditingComment(comment._id);
@@ -2340,20 +3000,9 @@ function CommentsSection({ postId, comments, onAddComment, onLikeComment, onDele
     }));
   };
 
-  const canEdit = (comment) => true; // Anyone can edit in group chat
-  const canDelete = (comment) => true; // Anyone can delete in group chat
+  const canEdit = () => true; // Allow edit (demo parity)
 
-  const handleSaveEdit = () => {
-    if (!editText.trim()) return;
-    onEditComment(editingComment, editText.trim());
-    setEditingComment(null);
-    setEditText('');
-  };
-
-  const handleCancelEdit = () => {
-    setEditingComment(null);
-    setEditText('');
-  };
+  // Save/Cancel handled by specific handlers above (handleSaveEditComment / handleCancelEditComment)
 
   // Recursive comment component - matches PostsPage exactly
   const CommentItem = ({ 
@@ -2365,21 +3014,6 @@ function CommentsSection({ postId, comments, onAddComment, onLikeComment, onDele
     onEditComment,
     onAddComment,
     postId,
-    canEdit,
-    canDelete,
-    replyingTo,
-    handleReply,
-    handleSubmitReply,
-    newReplyText,
-    setNewReplyText,
-    showReplies,
-    toggleReplies,
-    editingComment,
-    handleEditComment,
-    editText,
-    setEditText,
-    handleSaveEdit,
-    handleCancelEdit
   }) => {
     const hasReplies = comment.replies && comment.replies.length > 0;
     const isShowingReplies = showReplies[comment._id];
@@ -2669,21 +3303,6 @@ function CommentsSection({ postId, comments, onAddComment, onLikeComment, onDele
                 onEditComment={onEditComment}
                 onAddComment={onAddComment}
                 postId={postId}
-                canEdit={canEdit}
-                canDelete={canDelete}
-                replyingTo={replyingTo}
-                handleReply={handleReply}
-                handleSubmitReply={handleSubmitReply}
-                newReplyText={newReplyText}
-                setNewReplyText={setNewReplyText}
-                showReplies={showReplies}
-                toggleReplies={toggleReplies}
-                editingComment={editingComment}
-                handleEditComment={handleEditComment}
-                editText={editText}
-                setEditText={setEditText}
-                handleSaveEdit={handleSaveEdit}
-                handleCancelEdit={handleCancelEdit}
               />
             ))}
           </div>
@@ -2691,110 +3310,4 @@ function CommentsSection({ postId, comments, onAddComment, onLikeComment, onDele
       </div>
     );
   };
-
-
-
-  return (
-    <div style={{
-      marginTop: '20px',
-      padding: '20px',
-      background: 'rgba(248, 250, 252, 0.7)',
-      borderRadius: '12px',
-  border: '2px solid rgba(184, 134, 11, 0.25)'
-    }}>
-      <div style={{
-        height: 4,
-        borderRadius: 6,
-  background: 'linear-gradient(90deg,#8B3A3A,#B8860B)',
-        marginBottom: 12
-      }} />
-      <form onSubmit={handleSubmit} style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <input
-            value={newComment}
-            onChange={e => setNewComment(e.target.value)}
-            placeholder={'Write a comment…'}
-            style={{
-              flex: 1,
-              padding: '12px',
-              borderRadius: '10px',
-              border: '1px solid #e5e7eb',
-              fontSize: '14px',
-              outline: 'none',
-              transition: 'all 0.2s ease'
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = '#B8860B';
-              e.target.style.boxShadow = '0 0 0 3px rgba(184, 134, 11, 0.15)';
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = '#e5e7eb';
-              e.target.style.boxShadow = 'none';
-            }}
-          />
-          <button
-            type="submit"
-            disabled={!newComment.trim()}
-            style={{
-              background: !newComment.trim() ? '#e5e7eb' : 'linear-gradient(135deg, #722F37, #B8860B)',
-              color: !newComment.trim() ? '#9ca3af' : '#FFFEF7',
-              border: 'none',
-              borderRadius: '10px',
-              padding: '0 16px',
-              cursor: !newComment.trim() ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '600'
-            }}
-          >
-            Post
-          </button>
-        </div>
-      </form>
-
-      {comments?.length ? (
-        <div>
-          {comments.map(c => (
-            <CommentItem 
-              key={c._id} 
-              comment={c} 
-              level={0}
-              currentUserId={currentUserId}
-              onLikeComment={onLikeComment}
-              onDeleteComment={onDeleteComment}
-              onEditComment={onEditComment}
-              onAddComment={onAddComment}
-              postId={postId}
-              canEdit={canEdit}
-              canDelete={canDelete}
-              replyingTo={replyingTo}
-              handleReply={handleReply}
-              handleSubmitReply={handleSubmitReply}
-              newReplyText={newReplyText}
-              setNewReplyText={setNewReplyText}
-              showReplies={showReplies}
-              toggleReplies={toggleReplies}
-              editingComment={editingComment}
-              handleEditComment={handleEditComment}
-              editText={editText}
-              setEditText={setEditText}
-              handleSaveEdit={handleSaveEdit}
-              handleCancelEdit={handleCancelEdit}
-            />
-          ))}
-        </div>
-      ) : (
-        <div style={{
-          color: '#64748b',
-          fontSize: '14px',
-          padding: '16px',
-          textAlign: 'center',
-          border: '1px dashed #e5e7eb',
-          borderRadius: '8px',
-          background: 'white'
-        }}>
-          Be the first to comment
-        </div>
-      )}
-    </div>
-  );
 }

@@ -179,19 +179,6 @@ async function seedDatabase() {
         isOnline: Math.random() > 0.5,
         lastSeen: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000), // Random within last week
         languagesSpoken: [languages[i], languages[(i + 1) % languages.length]].slice(0, Math.floor(Math.random() * 3) + 1),
-        readingStats: {
-          booksRead: Math.floor(Math.random() * 200) + 20,
-          pagesRead: Math.floor(Math.random() * 50000) + 5000,
-          currentlyReading: Math.floor(Math.random() * 3) + 1,
-          toRead: Math.floor(Math.random() * 50) + 10,
-          reviewsWritten: Math.floor(Math.random() * 100) + 5,
-          avgRating: (Math.random() * 2 + 3).toFixed(1), // 3.0 - 5.0
-          readingGoal: [50, 75, 100, 150, 200][Math.floor(Math.random() * 5)],
-          goalProgress: Math.floor(Math.random() * 80) + 10,
-          readingStreak: Math.floor(Math.random() * 100) + 1,
-          favoriteFormat: ['Physical', 'E-book', 'Audiobook', 'Any'][Math.floor(Math.random() * 4)],
-          readingSpeed: ['Slow', 'Average', 'Fast'][Math.floor(Math.random() * 3)]
-        },
         favoriteGenres: [
           { name: genres[i], count: Math.floor(Math.random() * 50) + 10 },
           { name: genres[(i + 2) % genres.length], count: Math.floor(Math.random() * 30) + 5 },

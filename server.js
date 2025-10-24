@@ -14,6 +14,7 @@ import profileRoutes from './backend/routes/ProfileRoutes.js';
 import chatRoutes from './backend/routes/ChatRoutes.js';
 import discoveryRoutes from './backend/routes/DiscoveryRoutes.js';
 import authRoutes from "./backend/routes/AuthRoutes.js";
+import Profile from './backend/models/Profile.js';
 
 dotenv.config();
 
@@ -51,10 +52,44 @@ mongoose.connect(mongoURI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => {
+.then(async () => {
   console.log('✅ MongoDB Connected');
+
+  try {
+    await Profile.updateMany(
+      { isOnline: true },
+      { $set: { isOnline: false, lastSeen: new Date() } }
+    );
+  } catch (err) {
+    console.error('⚠️ Failed to reset online statuses on startup:', err.message);
+  }
+
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+  const server = app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+
+  let isShuttingDown = false;
+  const handleShutdown = async (signal) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log(`\n${signal} received. Marking users offline before shutdown...`);
+    try {
+      await Profile.updateMany(
+        { isOnline: true },
+        { $set: { isOnline: false, lastSeen: new Date() } }
+      );
+    } catch (err) {
+      console.error('⚠️ Failed to mark users offline during shutdown:', err.message);
+    } finally {
+      server.close(() => {
+        process.exit(0);
+      });
+      setTimeout(() => process.exit(0), 5000).unref();
+    }
+  };
+
+  ['SIGINT', 'SIGTERM'].forEach((signal) => {
+    process.on(signal, () => handleShutdown(signal));
+  });
 })
 .catch((error) => {
   console.error('❌ MongoDB Connection Failed:', error.message);

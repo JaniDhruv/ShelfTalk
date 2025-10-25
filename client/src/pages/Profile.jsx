@@ -30,6 +30,7 @@ export default function Profile() {
   const [userGroups, setUserGroups] = useState([]);
   const [userComments, setUserComments] = useState([]);
 
+  const isGuest = !user;
   // Load profile
   useEffect(() => {
     const loadProfile = async () => {
@@ -134,7 +135,7 @@ export default function Profile() {
   }, [userId, user, API_BASE]);
 
   const isOwnProfile = !userId || userId === (user?._id || user?.id);
-  const canMessage = !isOwnProfile;
+  const canMessage = !isOwnProfile && !isGuest;
   const navSections = [
     { key: 'overview', label: 'Overview', icon: 'fas fa-home' },
     { key: 'favorites', label: 'Favorites', icon: 'fas fa-star' },
@@ -162,8 +163,6 @@ export default function Profile() {
       ? `Last seen ${new Date(profileData.lastSeen).toLocaleString()}`
       : 'Recently active';
 
-  const socialStats = profileData?.socialStats || {};
-  
   // Calculate moderator count
   const moderatorCount = userGroups.filter(g => {
     const moderators = g?.moderators || [];
@@ -614,7 +613,7 @@ export default function Profile() {
                     <button
                       className="btn btn-secondary"
                       disabled={!canMessage}
-                      title={canMessage ? 'Send Message' : 'You cannot message yourself'}
+                      title={canMessage ? 'Send Message' : isGuest ? 'Sign in to send messages' : 'You cannot message yourself'}
                       onClick={handleStartMessage}
                     >
                       <i className="fas fa-comment"></i>

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/ConfirmationModal';
+import GuestGate from '../components/GuestGate';
 import './PostsPage.css';
 
 // Helper function to check if two dates are the same day
@@ -82,6 +83,7 @@ export default function GroupPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isGuest = !user;
 
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -176,12 +178,15 @@ export default function GroupPage() {
     }
   }, [id]);
 
-  useEffect(() => { fetchGroup(); }, [fetchGroup]);
+  useEffect(() => {
+    if (isGuest) return;
+    fetchGroup();
+  }, [fetchGroup, isGuest]);
 
   // Load user conversations for Share modal (parity with PostsPage)
   useEffect(() => {
     const loadConversations = async () => {
-      if (!user?._id) return;
+      if (!user?._id || isGuest) return;
       try {
         const resp = await fetch(`${API_BASE}/api/chat/conversations/${user._id}`);
         if (resp.ok) {
@@ -191,7 +196,7 @@ export default function GroupPage() {
       } catch {}
     };
     loadConversations();
-  }, [user, API_BASE]);
+  }, [user, API_BASE, isGuest]);
 
   const joinGroup = async () => {
     if (!user || !user._id) { setError('Login required'); return; }
@@ -651,6 +656,18 @@ export default function GroupPage() {
       if (interval) clearInterval(interval);
     };
   }, [activeTab, group, isMember, loadingChat, fetchChatMessages]);
+
+  if (isGuest) {
+    return (
+      <GuestGate
+        title="Members Only"
+        message="Sign in to view this club’s discussions, events, and private chat."
+        icon="fas fa-users"
+        loginText="Log In to View"
+        signupText="Create Free Account"
+      />
+    );
+  }
 
   return (
     <>

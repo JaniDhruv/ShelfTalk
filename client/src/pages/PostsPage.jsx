@@ -75,6 +75,9 @@ export default function PostsPage() {
   // User popover state
   const [openUserMenu, setOpenUserMenu] = useState(null); // post id keyed
   const userMenuRef = useRef(null);
+  const [guestPrompt, setGuestPrompt] = useState('');
+  const isGuest = !user;
+  const userId = user?._id || user?.id || null;
 
   useEffect(() => {
     const handler = (e) => {
@@ -86,6 +89,16 @@ export default function PostsPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    if (!guestPrompt) return;
+    const timer = setTimeout(() => setGuestPrompt(''), 4000);
+    return () => clearTimeout(timer);
+  }, [guestPrompt]);
+
+  const requireAuth = (message) => {
+    setGuestPrompt(message);
+  };
+
   const handleUsernameAction = (postAuthorId, action, conversationIdHint) => {
     if (!postAuthorId) return;
     if (action === 'profile') {
@@ -93,6 +106,10 @@ export default function PostsPage() {
       return;
     }
     if (action === 'message') {
+      if (!userId) {
+        requireAuth('Sign in to start conversations');
+        return;
+      }
       // If we already know a conversation id, navigate directly
       if (conversationIdHint) {
         navigate(`/chat?conversation=${conversationIdHint}`);
@@ -110,10 +127,16 @@ export default function PostsPage() {
   }, []);
 
   useEffect(() => {
+    if (isGuest && activeSection !== 'all') {
+      setActiveSection('all');
+    }
+  }, [isGuest, activeSection]);
+
+  useEffect(() => {
     const loadConversations = async () => {
-      if (!user?._id) return;
+      if (!userId) return;
       try {
-        const resp = await fetch(`${API_BASE}/api/chat/conversations/${user._id}`);
+        const resp = await fetch(`${API_BASE}/api/chat/conversations/${userId}`);
         if (resp.ok) {
           const data = await resp.json();
           setConversations(data);
@@ -121,7 +144,7 @@ export default function PostsPage() {
       } catch {}
     };
     loadConversations();
-  }, [user]);
+  }, [userId, API_BASE]);
 
   const fetchPosts = async () => {
     try {
@@ -163,10 +186,19 @@ export default function PostsPage() {
     }
   };
 
+  const handleOpenShareModal = (postId) => {
+    if (!userId) {
+      requireAuth('Sign in to share posts');
+      return;
+    }
+    setSharePostId(postId);
+  };
+
   const handleCreatePost = async (e) => {
     e.preventDefault();
     
-    if (!user || !user._id) {
+    if (!userId) {
+      requireAuth('Sign in to share a post');
       setError('You must be logged in to create a post');
       return;
     }
@@ -185,7 +217,7 @@ export default function PostsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           content: content.trim(), 
-          author: user._id 
+          author: userId 
         }),
       });
 
@@ -193,7 +225,7 @@ export default function PostsPage() {
         const payload = await response.json();
         const created = payload?.data || payload; // support both shapes
         // Ensure author object is present immediately
-        const authorObj = created.author?._id ? created.author : { _id: user._id, username: user.username };
+        const authorObj = created.author?._id ? created.author : { _id: userId, username: user?.username };
         const newPost = {
           ...created,
           author: authorObj,
@@ -213,8 +245,8 @@ export default function PostsPage() {
   };
 
   const handleLike = async (postId) => {
-    if (!user) {
-      setError('You must be logged in to like posts');
+    if (!userId) {
+      requireAuth('Sign in to like posts');
       return;
     }
 
@@ -222,7 +254,7 @@ export default function PostsPage() {
       const response = await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user._id }),
+        body: JSON.stringify({ userId }),
       });
 
       if (response.ok) {
@@ -245,13 +277,18 @@ export default function PostsPage() {
       return;
     }
 
+    if (!userId) {
+      requireAuth('Sign in to update your posts');
+      return;
+    }
+
     try {
       const res = await fetch(`http://localhost:5000/api/posts/${postId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           content: editContent.trim(),
-          authorId: user._id 
+          authorId: userId 
         })
       });
 
@@ -281,13 +318,17 @@ export default function PostsPage() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
+    if (!userId) {
+      requireAuth('Sign in to manage posts');
+      return;
+    }
 
     try {
       if (deleteTarget.type === 'post') {
         const res = await fetch(`http://localhost:5000/api/posts/${deleteTarget.id}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ authorId: user._id })
+          body: JSON.stringify({ authorId: userId })
         });
 
         if (!res.ok) throw new Error('Failed to delete post');
@@ -297,7 +338,7 @@ export default function PostsPage() {
         const res = await fetch(`http://localhost:5000/api/comments/${deleteTarget.id}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ authorId: user._id })
+          body: JSON.stringify({ authorId: userId })
         });
 
         if (!res.ok) throw new Error('Failed to delete comment');
@@ -341,8 +382,8 @@ export default function PostsPage() {
   const handleAddComment = async (postId) => {
     const text = commentText[postId];
     
-    if (!user || !user._id) {
-      setError('You must be logged in to comment');
+    if (!userId) {
+      requireAuth('Sign in to comment');
       return;
     }
 
@@ -356,7 +397,7 @@ export default function PostsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: text.trim(),
-          author: user._id,
+          author: userId,
           post: postId
         }),
       });
@@ -383,8 +424,8 @@ export default function PostsPage() {
   };
 
   const handleLikeComment = async (commentId, postId) => {
-    if (!user) {
-      setError('You must be logged in to like comments');
+    if (!userId) {
+      requireAuth('Sign in to react to comments');
       return;
     }
 
@@ -392,7 +433,7 @@ export default function PostsPage() {
       const response = await fetch(`http://localhost:5000/api/comments/${commentId}/like`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user._id }),
+        body: JSON.stringify({ userId }),
       });
 
       if (response.ok) {
@@ -405,6 +446,10 @@ export default function PostsPage() {
   };
 
   const handleEditComment = (comment) => {
+    if (!userId) {
+      requireAuth('Sign in to edit your comments');
+      return;
+    }
     setEditingComment(comment._id);
     setEditCommentText(comment.text);
   };
@@ -421,7 +466,7 @@ export default function PostsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           text: editCommentText.trim(),
-          authorId: user._id 
+          authorId: userId 
         })
       });
 
@@ -445,11 +490,19 @@ export default function PostsPage() {
   };
 
   const handleDeleteComment = (commentId, postId) => {
+    if (!userId) {
+      requireAuth('Sign in to manage your comments');
+      return;
+    }
     setDeleteTarget({ type: 'comment', id: commentId, postId });
     setShowDeleteModal(true);
   };
 
   const handleReply = (comment) => {
+    if (!userId) {
+      requireAuth('Sign in to reply to comments');
+      return;
+    }
     setReplyingTo(comment._id);
     setReplyText('');
   };
@@ -465,8 +518,8 @@ export default function PostsPage() {
       return;
     }
 
-    if (!user || !user._id) {
-      setError('You must be logged in to reply');
+    if (!userId) {
+      requireAuth('Sign in to reply to comments');
       return;
     }
 
@@ -476,7 +529,7 @@ export default function PostsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: replyText.trim(),
-          author: user._id,
+          author: userId,
           post: postId,
           parentComment: parentCommentId
         }),
@@ -517,9 +570,16 @@ export default function PostsPage() {
     const isShowingReplies = showReplies[comment._id];
     const isReplying = replyingTo === comment._id;
     const isEditing = editingComment === comment._id;
+    const viewerId = userId;
+    const likedByViewer = viewerId
+      ? (comment.likes || []).some(l => {
+          const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
+          return id === viewerId;
+        })
+      : false;
 
     return (
-      <div className={`comment-item ${comment.likes?.includes(user._id) ? 'comment-liked-by-user' : ''}`} style={{ marginLeft: level * 20 }}>
+      <div className={`comment-item ${likedByViewer ? 'comment-liked-by-user' : ''}`} style={{ marginLeft: level * 20 }}>
         <div className="comment-avatar">
           {comment.author?.username ? comment.author.username[0].toUpperCase() : 'U'}
         </div>
@@ -590,16 +650,22 @@ export default function PostsPage() {
               return (
                 <>
                   <button
-                    className={`comment-action-btn btn-like btn-like-sm ${isLiked ? 'liked' : ''}`}
+                    type="button"
+                    className={`comment-action-btn btn-like btn-like-sm ${isLiked ? 'liked' : ''} ${isGuest ? 'guest-locked' : ''}`}
                     onClick={() => handleLikeComment(comment._id, postId)}
+                    aria-disabled={isGuest}
+                    title={isGuest ? 'Sign in to react to comments' : undefined}
                   >
                     <i className={`${isLiked ? 'fas fa-heart' : 'far fa-heart'}`}></i>
                     {comment.likes?.length > 0 && <span>{comment.likes.length}</span>}
                   </button>
 
                   <button
-                    className="comment-action-btn reply"
+                    type="button"
+                    className={`comment-action-btn reply ${isGuest ? 'guest-locked' : ''}`}
                     onClick={() => handleReply(comment)}
+                    aria-disabled={isGuest}
+                    title={isGuest ? 'Sign in to reply' : undefined}
                   >
                     <i className="far fa-reply"></i>
                     Reply
@@ -625,7 +691,7 @@ export default function PostsPage() {
             <div className="reply-form-container">
               <div className="reply-form-wrapper">
                 <div className="reply-user-avatar">
-                  {user.username ? user.username[0].toUpperCase() : 'U'}
+                  {user?.username ? user.username[0].toUpperCase() : 'U'}
                 </div>
                 <div className="form-input-container">
                   <textarea
@@ -687,20 +753,6 @@ export default function PostsPage() {
     return true; // 'all' or 'create' (create section won't show posts list anyway)
   });
 
-  if (!user) {
-    return (
-      <div className="social-feed-container">
-        <div className="auth-required">
-          <h2>📚 Join the BookTalk Community</h2>
-          <p>Connect with fellow readers and share your literary journey</p>
-          <div className="auth-buttons">
-            <Link to="/login" className="btn-primary">Login</Link>
-            <Link to="/signup" className="btn-secondary">Sign Up</Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
   /* Unified themed layout */
   return (
     <div className="social-feed-container discover-container fade-in" style={{ overflow: 'visible' }}>
@@ -714,27 +766,88 @@ export default function PostsPage() {
       </section>
       <div className="discover-navigation" style={{ position: 'sticky', top: '76px', zIndex: 100 }}>
         <div className="nav-container">
-          <button className={`nav-tab ${activeSection === 'create' ? 'active' : ''}`} onClick={() => setActiveSection('create')}>
+          <button
+            type="button"
+            className={`nav-tab ${activeSection === 'create' ? 'active' : ''} ${isGuest ? 'guest-locked' : ''}`}
+            onClick={() => {
+              if (isGuest) {
+                requireAuth('Sign in to share your own posts');
+                return;
+              }
+              setActiveSection('create');
+            }}
+            aria-disabled={isGuest}
+          >
             <i className="fas fa-pen-nib"></i> Create
           </button>
-          <button className={`nav-tab ${activeSection === 'all' ? 'active' : ''}`} onClick={() => setActiveSection('all')}>
+          <button
+            type="button"
+            className={`nav-tab ${activeSection === 'all' ? 'active' : ''}`}
+            onClick={() => setActiveSection('all')}
+          >
             <i className="fas fa-globe"></i> All Posts {posts.length > 0 && <span className="sm-badge">{posts.length}</span>}
           </button>
-          <button className={`nav-tab ${activeSection === 'my' ? 'active' : ''}`} onClick={() => setActiveSection('my')}>
+          <button
+            type="button"
+            className={`nav-tab ${activeSection === 'my' ? 'active' : ''} ${isGuest ? 'guest-locked' : ''}`}
+            onClick={() => {
+              if (isGuest) {
+                requireAuth('Sign in to view your posts');
+                return;
+              }
+              setActiveSection('my');
+            }}
+            aria-disabled={isGuest}
+          >
             <i className="fas fa-user"></i> My Posts {myPostsCount > 0 && <span className="sm-badge">{myPostsCount}</span>}
           </button>
-          <button className={`nav-tab ${activeSection === 'liked' ? 'active' : ''}`} onClick={() => setActiveSection('liked')}>
+          <button
+            type="button"
+            className={`nav-tab ${activeSection === 'liked' ? 'active' : ''} ${isGuest ? 'guest-locked' : ''}`}
+            onClick={() => {
+              if (isGuest) {
+                requireAuth('Sign in to revisit the posts you liked');
+                return;
+              }
+              setActiveSection('liked');
+            }}
+            aria-disabled={isGuest}
+          >
             <i className="fas fa-heart"></i> Liked {likedPostsCount > 0 && <span className="sm-badge">{likedPostsCount}</span>}
           </button>
         </div>
       </div>
       <div className="discover-content" style={{ maxWidth: '750px' }}>
-        {activeSection === 'create' && (
+        {isGuest && (
+          <div className="guest-readonly-banner">
+            <div className="guest-readonly-message">
+              <i className="fas fa-eye"></i>
+              <div>
+                <h3>Reading as a Guest</h3>
+                <p>Sign in to publish posts, react, and join the discussion.</p>
+              </div>
+            </div>
+            <div className="guest-readonly-actions">
+              <Link to="/login" className="btn-primary">Login</Link>
+              <Link to="/signup" className="btn-secondary guest-signup-btn">Sign Up</Link>
+            </div>
+          </div>
+        )}
+        {guestPrompt && (
+          <div className="guest-prompt">
+            <i className="fas fa-info-circle"></i>
+            <span>{guestPrompt}</span>
+            <button type="button" className="guest-prompt-dismiss" onClick={() => setGuestPrompt('')}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        )}
+        {!isGuest && activeSection === 'create' && (
           <div className="create-post-card">
             <div className="create-post-header">
-              <div className="user-avatar">{user.username ? user.username[0].toUpperCase() : 'U'}</div>
+              <div className="user-avatar">{user?.username ? user.username[0].toUpperCase() : 'U'}</div>
               <div className="user-info">
-                <h3>{user.username}</h3>
+                <h3>{user?.username || 'Reader'}</h3>
                 <p>Share your thoughts with the community</p>
               </div>
             </div>
@@ -880,20 +993,34 @@ export default function PostsPage() {
                     </div>
                     <div className="post-actions">
                       {(() => {
-                        const uid = user?._id || user?.id;
-                        const isPostLiked = (post.likes || []).some(l => {
-                          const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
-                          return id === uid;
-                        });
+                        const viewerId = userId;
+                        const isPostLiked = viewerId
+                          ? (post.likes || []).some(l => {
+                              const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
+                              return id === viewerId;
+                            })
+                          : false;
                         return (
                           <>
-                            <button className={`action-btn btn-like ${isPostLiked ? 'liked' : ''}`} onClick={() => handleLike(post._id)}>
+                            <button
+                              type="button"
+                              className={`action-btn btn-like ${isPostLiked ? 'liked' : ''} ${isGuest ? 'guest-locked' : ''}`}
+                              onClick={() => handleLike(post._id)}
+                              aria-disabled={isGuest}
+                              title={isGuest ? 'Sign in to like posts' : undefined}
+                            >
                               <i className={`${isPostLiked ? 'fas fa-heart' : 'far fa-heart'}`}></i><span>{post.likes?.length || 0}</span>
                             </button>
-                            <button className="action-btn comment-btn" onClick={() => handleToggleComments(post._id)}>
+                            <button type="button" className="action-btn comment-btn" onClick={() => handleToggleComments(post._id)}>
                               <i className="far fa-comment"></i><span>{post.commentCount || 0}</span>
                             </button>
-                            <button className="action-btn share-btn" onClick={() => setSharePostId(post._id)}>
+                            <button
+                              type="button"
+                              className={`action-btn share-btn ${isGuest ? 'guest-locked' : ''}`}
+                              onClick={() => handleOpenShareModal(post._id)}
+                              aria-disabled={isGuest}
+                              title={isGuest ? 'Sign in to share posts' : undefined}
+                            >
                               <i className="fas fa-share"></i><span>Share</span>
                             </button>
                           </>
@@ -902,20 +1029,33 @@ export default function PostsPage() {
                     </div>
                     {showComments[post._id] && (
                       <div className="comments-section">
-                        <div className="add-comment-form">
-                          <div className="comment-input-wrapper">
-                            <div className="comment-user-avatar">{user.username ? user.username[0].toUpperCase() : 'U'}</div>
-                            <div className="comment-input-container">
-                              <textarea value={commentText[post._id] || ''} onChange={e => setCommentText(prev => ({ ...prev, [post._id]: e.target.value }))} placeholder="Write a comment..." className="comment-textarea" rows={2} maxLength={500} />
-                              <div className="comment-actions">
-                                <span className="comment-char-count">{(commentText[post._id] || '').length}/500</span>
-                                <button className="btn-comment-post" onClick={() => handleAddComment(post._id)} disabled={!(commentText[post._id]?.trim())}>
-                                  <i className="fas fa-paper-plane"></i> Post
-                                </button>
+                        {isGuest ? (
+                          <div className="comment-login-prompt">
+                            <div className="comment-login-text">
+                              <i className="fas fa-lock"></i>
+                              <span>Sign in to join the discussion.</span>
+                            </div>
+                            <div className="comment-login-actions">
+                              <Link to="/login" className="btn-primary">Login</Link>
+                              <Link to="/signup" className="btn-secondary guest-signup-btn">Sign Up</Link>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="add-comment-form">
+                            <div className="comment-input-wrapper">
+                              <div className="comment-user-avatar">{user?.username ? user.username[0].toUpperCase() : 'U'}</div>
+                              <div className="comment-input-container">
+                                <textarea value={commentText[post._id] || ''} onChange={e => setCommentText(prev => ({ ...prev, [post._id]: e.target.value }))} placeholder="Write a comment..." className="comment-textarea" rows={2} maxLength={500} />
+                                <div className="comment-actions">
+                                  <span className="comment-char-count">{(commentText[post._id] || '').length}/500</span>
+                                  <button type="button" className="btn-comment-post" onClick={() => handleAddComment(post._id)} disabled={!(commentText[post._id]?.trim())}>
+                                    <i className="fas fa-paper-plane"></i> Post
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
+                        )}
                         <div className="comments-list">
                           {commentsLoading[post._id] ? (
                             <div className="comments-loading">

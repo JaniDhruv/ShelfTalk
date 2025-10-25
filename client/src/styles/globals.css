@@ -270,6 +270,22 @@ body {
   box-shadow: var(--shadow-heavy);
 }
 
+.btn-secondary.guest-signup-btn,
+.btn-secondary.guest-signup-btn:visited {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 60%, #991b1b 100%);
+  color: #fffef7;
+  border: none;
+  box-shadow: var(--shadow-medium);
+}
+
+.btn-secondary.guest-signup-btn:hover:not(:disabled),
+.btn-secondary.guest-signup-btn:focus-visible {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 60%, #b91c1c 100%);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-heavy);
+}
+
 .btn-success {
   background: linear-gradient(135deg, var(--success-600) 0%, var(--success-500) 100%);
   color: white;

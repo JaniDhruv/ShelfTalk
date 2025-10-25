@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import './Chat.css';
 import ConfirmationModal from '../components/ConfirmationModal';
+import GuestGate from '../components/GuestGate';
 
 // Helper function to check if two dates are the same day
 const isSameDay = (first, second) => {
@@ -142,6 +143,7 @@ const formatLastMessage = (chat, currentUserId) => {
 export default function Chat() {
   const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
   const { user } = useAuth();
+  const isGuest = !user;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeChat, setActiveChat] = useState(null);
@@ -166,7 +168,7 @@ export default function Chat() {
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   const loadMessages = useCallback(async (opts = { silent: false }) => {
-    if (!activeChat?._id) return;
+    if (isGuest || !activeChat?._id) return;
     try {
       if (!opts.silent) setLoadingMessages(true);
       const resp = await fetch(`${API_BASE}/api/chat/messages/${activeChat._id}`);
@@ -185,10 +187,11 @@ export default function Chat() {
     } finally {
       if (!opts.silent) setLoadingMessages(false);
     }
-  }, [API_BASE, activeChat, user]);
+  }, [API_BASE, activeChat, user, isGuest]);
 
   useEffect(() => {
     const loadConversations = async () => {
+      if (isGuest) return;
       if (!user?._id && !user?.id) return;
       const uid = user?._id || user?.id;
       try {
@@ -216,7 +219,7 @@ export default function Chat() {
       }
     };
     loadConversations();
-  }, [user, searchParams, API_BASE]);
+  }, [user, searchParams, API_BASE, isGuest]);
 
   useEffect(() => {
     loadMessages();
@@ -231,12 +234,12 @@ export default function Chat() {
 
   // Auto-refresh messages every 10 seconds when a chat is active
   useEffect(() => {
-    if (!activeChat?._id) return; 
+    if (isGuest || !activeChat?._id) return; 
     const interval = setInterval(() => {
       loadMessages({ silent: true });
     }, 10000);
     return () => clearInterval(interval);
-  }, [activeChat, loadMessages]);
+  }, [activeChat, loadMessages, isGuest]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -437,6 +440,11 @@ export default function Chat() {
   };
 
   const searchForUsers = useCallback(async (query) => {
+    if (isGuest) {
+      setFoundUsers([]);
+      return;
+    }
+
     if (query.trim().length < 2) {
       setFoundUsers([]);
       return;
@@ -453,7 +461,7 @@ export default function Chat() {
       console.error('Error searching users:', error);
       setFoundUsers([]);
     }
-  }, [user]);
+  }, [user, isGuest]);
 
   const createDirectMessage = async (userId) => {
     setIsCreatingChat(true);
@@ -615,6 +623,18 @@ export default function Chat() {
 
   const activePresence = getPresenceStatus(activeChat);
   const activeDisplayName = getDisplayName(activeChat);
+
+  if (isGuest) {
+    return (
+      <GuestGate
+        title="Messages are Private"
+        message="Log in to browse your conversations and chat with other readers."
+        icon="fas fa-comments"
+        loginText="Log In to Chat"
+        signupText="Create Free Account"
+      />
+    );
+  }
 
   return (
     <div className="chat-container">

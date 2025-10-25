@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import GuestGate from '../components/GuestGate';
 import './Discover.css';
 
 const buildPresence = (user) => {
@@ -212,6 +213,18 @@ export default function Groups() {
     const approvals = groups.filter(g => (g.createdBy?._id||g.createdBy)===user._id && (g.joinRequests||[]).length>0).length;
     return { invites, myPending, approvals, total: invites + myPending + approvals };
   }, [groups, user]);
+
+  if (!user) {
+    return (
+      <GuestGate
+        title="Book Clubs Await"
+        message="Sign in to create clubs, review requests, and manage your reading communities."
+        icon="fas fa-users"
+        loginText="Log In to Continue"
+        signupText="Create Free Account"
+      />
+    );
+  }
 
   return (
     <div>

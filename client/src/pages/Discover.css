@@ -249,6 +249,93 @@
   padding: 40px 2rem;
 }
 
+/* Guest read-only helpers */
+.guest-readonly-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  background: rgba(253, 246, 227, 0.92);
+  border: 1px solid rgba(114, 47, 55, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgba(114, 47, 55, 0.12);
+}
+
+.guest-readonly-message {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  color: var(--charcoal-gray);
+}
+
+.guest-readonly-message i {
+  font-size: 1.6rem;
+  color: var(--rich-burgundy);
+  margin-top: 4px;
+}
+
+.guest-readonly-message h3 {
+  margin: 0 0 4px 0;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  color: var(--deep-burgundy);
+}
+
+.guest-readonly-message p {
+  margin: 0;
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+
+.guest-readonly-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.guest-prompt {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(139, 58, 58, 0.22);
+  background: rgba(139, 58, 58, 0.08);
+  color: var(--rich-burgundy);
+  box-shadow: 0 8px 24px rgba(114, 47, 55, 0.12);
+}
+
+.guest-prompt i {
+  font-size: 1.1rem;
+}
+
+.guest-prompt-dismiss {
+  margin-left: 0.5rem;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: opacity 0.2s ease;
+}
+
+.guest-prompt-dismiss:hover {
+  opacity: 0.7;
+}
+
+.guest-locked {
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
+
+.guest-locked:hover {
+  transform: none !important;
+}
+
 /* StudyMATE-like Filter Card with Literary Theme */
 .sm-filter-card {
   background: var(--ivory-white);
@@ -288,6 +375,45 @@
   grid-template-columns: 1fr repeat(4, minmax(140px, auto)) auto;
   gap: 12px;
   align-items: center;
+}
+
+.sm-toggle-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.sm-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 10px 16px;
+  border: 1px solid rgba(114, 47, 55, 0.25);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--warm-sepia);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--smooth-transition);
+  box-shadow: 0 4px 14px rgba(114, 47, 55, 0.08);
+}
+
+.sm-toggle:hover {
+  border-color: rgba(184, 134, 11, 0.55);
+  color: var(--rich-burgundy);
+  box-shadow: 0 6px 18px rgba(184, 134, 11, 0.18);
+}
+
+.sm-toggle.active {
+  background: var(--forest-gradient);
+  color: var(--ivory-white);
+  border-color: rgba(240, 210, 139, 0.6);
+  box-shadow: 0 10px 24px rgba(135, 169, 107, 0.22);
+}
+
+.sm-toggle i {
+  font-size: 0.9rem;
 }
 
 .sm-search-group {
@@ -1634,6 +1760,8 @@
 
   .sm-filter-row { grid-template-columns: 1fr; }
   .sm-adv-row { grid-template-columns: 1fr; }
+  .sm-toggle-group { justify-content: center; }
+  .sm-toggle { width: 100%; justify-content: center; }
   
   .users-grid,
   .clubs-grid,

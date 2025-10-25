@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import './Discover.css';
@@ -51,6 +51,7 @@ export default function Discover() {
   const [locationFilter, setLocationFilter] = useState('');
   const [languagesFilter, setLanguagesFilter] = useState('');
   const [sortBy, setSortBy] = useState('username');
+  const [onlineOnly, setOnlineOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const [users, setUsers] = useState([]);
@@ -58,14 +59,13 @@ export default function Discover() {
   const [clubsLoading, setClubsLoading] = useState(false);
   const [clubsError, setClubsError] = useState('');
   const [clubsInfo, setClubsInfo] = useState('');
-  const [clubName, setClubName] = useState('');
-  const [clubDescription, setClubDescription] = useState('');
-  const [clubVisibility, setClubVisibility] = useState('public');
   // Clubs filter state
   const [clubSearch, setClubSearch] = useState('');
   const [clubFilterVisibility, setClubFilterVisibility] = useState('any'); // any|public|private
   const [clubOwnership, setClubOwnership] = useState('any'); // any|mine|joined|not_joined
   const [clubSort, setClubSort] = useState('recent'); // recent|name|members
+  const isGuest = !user;
+  const [guestPrompt, setGuestPrompt] = useState('');
 
   const genres = [
     'Fantasy', 'Science Fiction', 'Romance', 'Mystery', 'Thriller',
@@ -73,6 +73,16 @@ export default function Discover() {
     'Young Adult', 'Biography', 'Self-Help', 'Non-Fiction', 'Horror',
     'Adventure', 'Philosophy', 'Poetry', 'Drama', 'Comedy', 'Travel'
   ];
+
+  useEffect(() => {
+    if (!guestPrompt) return;
+    const timer = setTimeout(() => setGuestPrompt(''), 3500);
+    return () => clearTimeout(timer);
+  }, [guestPrompt]);
+
+  const requireAuth = (message = 'Please sign in to continue.') => {
+    setGuestPrompt(message);
+  };
 
   // Sync active tab with ?tab= query parameter
   useEffect(() => {
@@ -93,7 +103,7 @@ export default function Discover() {
     });
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     const params = new URLSearchParams();
     if (searchQuery) params.append('search', searchQuery);
     if (locationFilter) params.append('location', locationFilter);
@@ -113,7 +123,7 @@ export default function Discover() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [searchQuery, locationFilter, selectedGenres, selectedAuthors, languagesFilter, sortBy]);
 
   const fetchClubs = async () => {
     try {
@@ -129,28 +139,6 @@ export default function Discover() {
     } finally {
       setClubsLoading(false);
     }
-  };
-
-  // Group actions for Book Clubs tab
-  const createGroup = async (e) => {
-    e.preventDefault();
-    if (!user || !user._id) { setClubsError('Login required'); return; }
-    try {
-      const res = await fetch('http://localhost:5000/api/groups', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: clubName.trim(),
-          description: clubDescription.trim(),
-          createdBy: user._id,
-          visibility: clubVisibility
-        })
-      });
-      if (!res.ok) throw new Error('Failed to create group');
-      setClubName('');
-      setClubDescription('');
-      await fetchClubs();
-    } catch (e) { setClubsError(e.message); }
   };
 
   const joinGroup = async (groupId) => {
@@ -230,17 +218,9 @@ export default function Discover() {
   // Load all users by default when component mounts and when switching to users tab
   useEffect(() => {
     if (activeTab === 'users') {
-      console.log('Fetching users on tab change or filter change');
       fetchUsers();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, searchQuery, selectedGenres, selectedAuthors, locationFilter, languagesFilter, sortBy]);
-
-  // Load users immediately when component mounts
-  useEffect(() => {
-    console.log('Component mounted, fetching users');
-    fetchUsers();
-  }, []);
+  }, [activeTab, fetchUsers]);
 
   useEffect(() => {
     if (activeTab === 'clubs') fetchClubs();
@@ -249,8 +229,10 @@ export default function Discover() {
   // Users list without the logged-in user
   const visibleUsers = React.useMemo(() => {
     const uid = user?._id || user?.id;
-    return (users || []).filter(u => (u._id || u.id) !== uid);
-  }, [users, user]);
+    const filtered = (users || []).filter(u => (u._id || u.id) !== uid);
+    if (!onlineOnly) return filtered;
+    return filtered.filter(candidate => buildPresence(candidate).isOnline);
+  }, [users, user, onlineOnly]);
 
   // Derived filtered/sorted clubs
   const filteredClubs = React.useMemo(() => {
@@ -316,7 +298,17 @@ export default function Discover() {
             <h2 className="sm-title"><i className="fas fa-users"></i> Find Your Reading Partner</h2>
             <p className="sm-subtitle">Connect with readers to enhance your literary journey</p>
           </div>
-          <button className="sm-invite-btn"><i className="fas fa-user-plus"></i> Invite Friends</button>
+          <button
+            type="button"
+            className={`sm-invite-btn ${isGuest ? 'guest-locked' : ''}`}
+            onClick={() => {
+              if (isGuest) {
+                requireAuth('Sign in to invite friends to ShelfTalk.');
+              }
+            }}
+          >
+            <i className="fas fa-user-plus"></i> Invite Friends
+          </button>
         </div>
       </div>
 
@@ -342,6 +334,41 @@ export default function Discover() {
 
       {/* Content */}
       <div className="discover-content">
+        {isGuest && (
+          <div className="guest-readonly-banner">
+            <div className="guest-readonly-message">
+              <i className="fas fa-door-open" aria-hidden="true"></i>
+              <div>
+                <h3>Browsing as a guest</h3>
+                <p>Create a free account to message readers and join clubs.</p>
+              </div>
+            </div>
+            <div className="guest-readonly-actions">
+              <Link to="/login" className="btn btn-primary">Log In</Link>
+              <Link to="/signup" className="btn btn-secondary guest-signup-btn">Sign Up</Link>
+            </div>
+          </div>
+        )}
+
+        {guestPrompt && (
+          <div className="guest-prompt">
+            <i className="fas fa-lock" aria-hidden="true"></i>
+            <span>{guestPrompt}</span>
+            <div className="guest-readonly-actions" style={{ marginLeft: 'auto' }}>
+              <Link to="/login" className="btn btn-primary btn-sm">Log In</Link>
+              <Link to="/signup" className="btn btn-secondary guest-signup-btn btn-sm">Sign Up</Link>
+            </div>
+            <button
+              type="button"
+              className="guest-prompt-dismiss"
+              onClick={() => setGuestPrompt('')}
+              aria-label="Dismiss guest prompt"
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+        )}
+
         {activeTab === 'users' && (
           <div className="users-section">
             {/* StudyMATE-like Filter Card */}
@@ -374,6 +401,17 @@ export default function Discover() {
                     value={locationFilter}
                     onChange={(e) => setLocationFilter(e.target.value)}
                   />
+                  <div className="sm-toggle-group">
+                    <button
+                      type="button"
+                      className={`sm-toggle ${onlineOnly ? 'active' : ''}`}
+                      onClick={() => setOnlineOnly(prev => !prev)}
+                      aria-pressed={onlineOnly}
+                    >
+                      <i className="fas fa-signal"></i>
+                      Online now
+                    </button>
+                  </div>
                   <button className="sm-apply-btn" onClick={fetchUsers}>Apply</button>
                 </div>
                 <div className="sm-adv-row">
@@ -422,7 +460,7 @@ export default function Discover() {
                     <div className="sm-empty-icon"><i className="fas fa-users"></i></div>
                     <h5>No users found</h5>
                     <p>Try adjusting your search or filters</p>
-                    <button className="sm-apply-btn" onClick={() => { setSearchQuery(''); setLocationFilter(''); setSelectedGenres([]); setSelectedAuthors(''); setLanguagesFilter(''); setSortBy('username'); fetchUsers(); }}>
+                    <button className="sm-apply-btn" onClick={() => { setSearchQuery(''); setLocationFilter(''); setSelectedGenres([]); setSelectedAuthors(''); setLanguagesFilter(''); setSortBy('username'); setOnlineOnly(false); fetchUsers(); }}>
                       <i className="fas fa-sync-alt"></i> Reset Filters
                     </button>
                   </div>
@@ -485,7 +523,18 @@ export default function Discover() {
                       <div className="sm-card-footer">
                         <div className="sm-actions">
                           <button className="sm-btn outline" onClick={() => window.open(`/profile/${u._id}`, '_blank')}><i className="fas fa-user"></i> View Profile</button>
-                          <button className="sm-btn ghost" onClick={() => handleMessage(u._id)}><i className="fas fa-envelope"></i> Message</button>
+                          <button
+                            className={`sm-btn ghost ${isGuest ? 'guest-locked' : ''}`}
+                            onClick={() => {
+                              if (isGuest) {
+                                requireAuth('Sign in to start a conversation.');
+                                return;
+                              }
+                              handleMessage(u._id);
+                            }}
+                          >
+                            <i className="fas fa-envelope"></i> Message
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -679,7 +728,18 @@ export default function Discover() {
                         </div>
                         <div className="sm-group-actions">
                           {!isMember ? (
-                            <button onClick={() => joinGroup(g._id)} className="sm-group-btn sm-group-btn-join">{g.visibility === 'private' ? 'Request to Join' : 'Join'}</button>
+                            <button
+                              onClick={() => {
+                                if (isGuest) {
+                                  requireAuth('Sign in to join or request access to clubs.');
+                                  return;
+                                }
+                                joinGroup(g._id);
+                              }}
+                              className={`sm-group-btn sm-group-btn-join ${isGuest ? 'guest-locked' : ''}`}
+                            >
+                              {g.visibility === 'private' ? 'Request to Join' : 'Join'}
+                            </button>
                           ) : (
                             <button onClick={() => leaveGroup(g._id)} className="sm-group-btn sm-group-btn-leave">Leave</button>
                           )}

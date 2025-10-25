@@ -49,7 +49,7 @@ export const createPost = async (req, res) => {
       populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
     });
     if (group) {
-      await post.populate('group', 'name');
+      await post.populate('group', 'name visibility members');
     }
 
     res.status(201).json({
@@ -77,7 +77,7 @@ export const getPosts = async (req, res) => {
         select: 'username email profile',
         populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
       })
-      .populate('group', 'name');
+  .populate('group', 'name visibility members');
     res.status(200).json(posts);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching posts', error: error.message });
@@ -94,7 +94,7 @@ export const getPostById = async (req, res) => {
         select: 'username email profile',
         populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
       })
-      .populate('group', 'name');
+  .populate('group', 'name visibility members');
 
     if (!post) return res.status(404).json({ message: 'Post not found' });
 
@@ -135,7 +135,7 @@ export const updatePost = async (req, res) => {
       populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
     });
     if (post.group) {
-      await post.populate('group', 'name');
+      await post.populate('group', 'name visibility members');
     }
 
     res.status(200).json({

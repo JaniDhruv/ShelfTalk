@@ -148,11 +148,18 @@ npm start      # starts node src/server.js
 
 ## 💻 Setup — Frontend
 
+
 ### 1. Install dependencies
 ```bash
 cd frontend
 npm install
 ```
+
+#### If you see errors about missing FontAwesome icons:
+```bash
+npm install @fortawesome/fontawesome-free --save
+```
+This package is required for icons in the UI and may not always be installed by default.
 
 ### 2. Create environment file
 ```bash

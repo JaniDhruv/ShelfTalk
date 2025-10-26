@@ -1,6 +1,6 @@
 
 <div align="center">
-		<img src="frontend/public/shelftalk-logo-navbar.png" alt="ShelfTalk Logo" width="120" />
+			<img src="frontend/public/shelftalk-logo-navbar.png" alt="ShelfTalk Logo" width="200" />
 </div>
 
 # 📚 ShelfTalk — Setup & Overview

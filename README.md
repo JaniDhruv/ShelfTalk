@@ -1,3 +1,8 @@
+
+<div align="center">
+		<img src="frontend/public/shelftalk-logo-navbar.png" alt="ShelfTalk Logo" width="120" />
+</div>
+
 # 📚 ShelfTalk — Setup & Overview
 
 > **Turn every reading list into a living conversation.**

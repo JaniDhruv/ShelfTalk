@@ -62,8 +62,8 @@ ShelfTalk/
 │  ├─ .env.example
 ├─ db-backup/       # MongoDB dump (shelftalk/)
 ├─ uploads/         # Uploaded files
-├─ README.md        # This file
-└─ .gitignore
+├─ .gitignore
+└─ README.md        # This file
 ```
 
 ---

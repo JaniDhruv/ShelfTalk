@@ -5,15 +5,15 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import userRoutes from '../routes/UserRoutes.js';
-import postRoutes from '../routes/PostRoutes.js';
-import commentRoutes from '../routes/CommentRoutes.js';
-import groupRoutes from '../routes/GroupRoutes.js';
-import notificationRoutes from '../routes/NotificationRoutes.js';
-import profileRoutes from '../routes/ProfileRoutes.js';
-import chatRoutes from '../routes/ChatRoutes.js';
-import discoveryRoutes from '../routes/DiscoveryRoutes.js';
-import authRoutes from "../routes/AuthRoutes.js";
+import userRoutes from './routes/UserRoutes.js';
+import postRoutes from './routes/PostRoutes.js';
+import commentRoutes from './routes/CommentRoutes.js';
+import groupRoutes from './routes/GroupRoutes.js';
+import notificationRoutes from './routes/NotificationRoutes.js';
+import profileRoutes from './routes/ProfileRoutes.js';
+import chatRoutes from './routes/ChatRoutes.js';
+import discoveryRoutes from './routes/DiscoveryRoutes.js';
+import authRoutes from './routes/AuthRoutes.js';
 import Profile from './models/Profile.js';
 
 dotenv.config();

@@ -1,6 +1,6 @@
-import User from '../src/models/User.js';
-import Group from '../src/models/Group.js';
-import Profile from '../src/models/Profile.js';
+import User from '../models/User.js';
+import Group from '../models/Group.js';
+import Profile from '../models/Profile.js';
 
 export const discoverUsers = async (req, res) => {
   try {

@@ -1,5 +1,5 @@
-import Profile from '../src/models/Profile.js';
-import User from '../src/models/User.js';
+import Profile from '../models/Profile.js';
+import User from '../models/User.js';
 
 const ensureUserProfileLink = async (userDoc, profileDoc) => {
   if (!userDoc || !profileDoc) return;

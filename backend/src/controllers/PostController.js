@@ -1,6 +1,6 @@
-import Post from '../src/models/Post.js';
-import User from '../src/models/User.js';
-import Group from '../src/models/Group.js';
+import Post from '../models/Post.js';
+import User from '../models/User.js';
+import Group from '../models/Group.js';
 
 // @desc Create a new post
 // @route POST /api/posts

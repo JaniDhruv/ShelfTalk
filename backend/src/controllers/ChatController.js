@@ -1,6 +1,6 @@
-import Conversation from '../src/models/Conversation.js';
-import Message from '../src/models/Message.js';
-import Group from '../src/models/Group.js';
+import Conversation from '../models/Conversation.js';
+import Message from '../models/Message.js';
+import Group from '../models/Group.js';
 import path from 'path';
 
 export const listConversations = async (req, res) => {

@@ -174,9 +174,3 @@ By default:
 - Backend runs on **http://localhost:5000**
 
 ---
-
-## 🧾 License
-MIT License © 2025 ShelfTalk
-````
-
----

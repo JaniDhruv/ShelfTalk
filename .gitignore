@@ -1,0 +1,41 @@
+# Combined .gitignore for repository (merged from root and frontend)
+
+# Node dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Build / output
+build/
+dist/
+coverage/
+
+# dotenv (examples only in repo; do NOT commit real .env files)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Misc
+*.tgz
+.cache/
+
+# Frontend specific (already covered but kept for clarity)
+/build
+

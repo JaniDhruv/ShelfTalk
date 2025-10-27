@@ -155,6 +155,8 @@ REACT_APP_API_BASE=http://localhost:5000
 
 This Quick Setup assumes you want a fast evaluator-run path (restore DB, start backend, start frontend). For more troubleshooting or alternatives (seed script, Atlas connection), see the full setup sections below.
 
+## 🛠️ Setup (Step By Step)
+
 ## 🔑 Environment Setup (Important!)
 
 > ⚠️ **Do NOT commit real `.env` files.**  
@@ -182,7 +184,7 @@ REACT_APP_API_BASE=http://localhost:5000
 
 ---
 
-## 🛠️ Setup — Backend
+## ⚙️ Setup — Backend
 
 ### 1. Install dependencies
 ```bash

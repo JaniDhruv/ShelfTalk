@@ -112,11 +112,7 @@ npm install
 ```
 
 ### 2. Create environment file
-```bash
-cd backend
-cp .env.example .env
-# Then edit backend/.env and set MONGO_URI and JWT_SECRET
-```
+See the **Environment Setup** section above for the exact `.env` templates and values.
 
 ### 3. Seed the database (optional)
 There are two options to load initial data:
@@ -126,6 +122,14 @@ There are two options to load initial data:
 # From repository root
 mongorestore --db shelftalk ./db-backup/shelftalk
 ```
+
+If your system doesn't have `mongorestore` on PATH (common on Windows), run the tool with its full path. Example (PowerShell) for the default MongoDB Database Tools install location:
+
+```powershell
+& "C:\Program Files\MongoDB\Tools\100\bin\mongorestore.exe" --db shelftalk .\db-backup\shelftalk
+```
+
+Replace the path above with your installed Tools path/version if different.
 
 **Option 2 — Run the seed script:**
 ```bash
@@ -162,11 +166,7 @@ npm install @fortawesome/fontawesome-free --save
 This package is required for icons in the UI and may not always be installed by default.
 
 ### 2. Create environment file
-```bash
-cd frontend
-cp .env.example .env
-# Edit frontend/.env to set REACT_APP_API_BASE if needed
-```
+See the **Environment Setup** section above for the exact `.env` templates and values.
 
 ### 3. Start the frontend
 ```bash

@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import http from 'http';
 
 import userRoutes from './routes/UserRoutes.js';
 import postRoutes from './routes/PostRoutes.js';
@@ -15,10 +16,15 @@ import chatRoutes from './routes/ChatRoutes.js';
 import discoveryRoutes from './routes/DiscoveryRoutes.js';
 import authRoutes from './routes/AuthRoutes.js';
 import Profile from './models/Profile.js';
+import { configureChatSocket } from './socket/chatSocket.js';
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
+const io = configureChatSocket(server);
+
+app.set('io', io);
 
 // Middleware
 app.use(express.json());
@@ -66,7 +72,7 @@ mongoose.connect(mongoURI, {
   }
 
   const PORT = process.env.PORT || 5000;
-  const server = app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+  server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
 
   let isShuttingDown = false;
   const handleShutdown = async (signal) => {

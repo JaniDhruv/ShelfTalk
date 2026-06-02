@@ -7,7 +7,7 @@ export default function Profile() {
   const { userId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
   const [activeTab, setActiveTab] = useState('overview');
   const [isLoading, setIsLoading] = useState(true);

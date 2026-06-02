@@ -44,6 +44,7 @@ export default function Discover() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   const [activeTab, setActiveTab] = useState('users');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenres, setSelectedGenres] = useState([]);
@@ -114,7 +115,7 @@ export default function Discover() {
     try {
       console.log('Fetching users with params:', params.toString());
       setIsLoading(true);
-      const resp = await fetch(`http://localhost:5000/api/discover/users?${params.toString()}`);
+      const resp = await fetch(`${API_BASE}/api/discover/users?${params.toString()}`);
       const data = await resp.json();
       console.log('Received users:', data?.length || 0, data);
       setUsers(data || []);
@@ -129,7 +130,7 @@ export default function Discover() {
     try {
       setClubsLoading(true);
       setClubsError('');
-      const resp = await fetch('http://localhost:5000/api/groups');
+      const resp = await fetch(`${API_BASE}/api/groups`);
       if (!resp.ok) throw new Error('Failed to load groups');
       const data = await resp.json();
       setBookClubs(data || []);
@@ -144,7 +145,7 @@ export default function Discover() {
   const joinGroup = async (groupId) => {
     if (!user || !user._id) { setClubsError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/add-member`, {
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}/add-member`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user._id })
@@ -157,7 +158,7 @@ export default function Discover() {
   const leaveGroup = async (groupId) => {
     if (!user || !user._id) { setClubsError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/remove-member`, {
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}/remove-member`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user._id })
@@ -170,7 +171,7 @@ export default function Discover() {
   const deleteGroup = async (groupId) => {
     if (!window.confirm('Delete this group?')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete group');
       await fetchClubs();
     } catch (e) { setClubsError(e.message); }
@@ -179,7 +180,7 @@ export default function Discover() {
   const respondInvite = async (groupId, accept) => {
     if (!user || !user._id) { setClubsError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/invite/respond`, {
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}/invite/respond`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ actorId: user._id, accept })
       });
       const data = await res.json();
@@ -192,7 +193,7 @@ export default function Discover() {
   const approveJoin = async (groupId, requesterId) => {
     if (!user || !user._id) { setClubsError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/approve`, {
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}/approve`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requesterId, actorId: user._id })
       });
       const data = await res.json();
@@ -205,7 +206,7 @@ export default function Discover() {
   const declineJoin = async (groupId, requesterId) => {
     if (!user || !user._id) { setClubsError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/decline`, {
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}/decline`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requesterId, actorId: user._id })
       });
       const data = await res.json();
@@ -273,7 +274,7 @@ export default function Discover() {
   const handleMessage = async (userId) => {
     try {
       const uid = user?._id || user?.id;
-      const response = await fetch('http://localhost:5000/api/chat/conversations/dm', {
+      const response = await fetch(`${API_BASE}/api/chat/conversations/dm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ participants: [uid, userId] }),

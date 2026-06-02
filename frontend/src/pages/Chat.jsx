@@ -141,7 +141,7 @@ const formatLastMessage = (chat, currentUserId) => {
 };
 
 export default function Chat() {
-  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   const { user } = useAuth();
   const isGuest = !user;
   const navigate = useNavigate();
@@ -451,7 +451,7 @@ export default function Chat() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/discover/users?search=${encodeURIComponent(query)}&limit=5`);
+      const response = await fetch(`${API_BASE}/api/discover/users?search=${encodeURIComponent(query)}&limit=5`);
       if (response.ok) {
         const users = await response.json();
         const uid = user?._id || user?.id;
@@ -467,7 +467,7 @@ export default function Chat() {
     setIsCreatingChat(true);
     try {
       const uid = user?._id || user?.id;
-      const response = await fetch('http://localhost:5000/api/chat/conversations/dm', {
+      const response = await fetch(`${API_BASE}/api/chat/conversations/dm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -128,7 +128,7 @@ export default function GroupPage() {
   const [, setCommentsLoading] = useState({});
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
   const isMember = user && user._id && group && group.members?.some(m => (m._id || m) === user._id);
   const isOwner = user && user._id && group && (group.createdBy?._id || group.createdBy) === user._id;
@@ -143,8 +143,8 @@ export default function GroupPage() {
     try {
       setLoading(true);
       const [gRes, pRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/groups/${id}`),
-        fetch('http://localhost:5000/api/posts')
+        fetch(`${API_BASE}/api/groups/${id}`),
+        fetch(`${API_BASE}/api/posts`)
       ]);
       if (!gRes.ok) throw new Error('Failed to load group');
       const gData = await gRes.json();
@@ -157,7 +157,7 @@ export default function GroupPage() {
       const counts = {};
       for (const p of groupPosts) {
         try {
-          const cRes = await fetch(`http://localhost:5000/api/comments/post/${p._id}`);
+          const cRes = await fetch(`${API_BASE}/api/comments/post/${p._id}`);
           if (cRes.ok) {
             const list = await cRes.json();
             counts[p._id] = list.length;
@@ -201,7 +201,7 @@ export default function GroupPage() {
   const joinGroup = async () => {
     if (!user || !user._id) { setError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${id}/add-member`, {
+      const res = await fetch(`${API_BASE}/api/groups/${id}/add-member`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user._id })
       });
       if (!res.ok) throw new Error('Failed to join');
@@ -218,7 +218,7 @@ export default function GroupPage() {
     
     setLeaveLoading(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${id}/remove-member`, {
+      const res = await fetch(`${API_BASE}/api/groups/${id}/remove-member`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -284,7 +284,7 @@ export default function GroupPage() {
     if (!composer.trim() || !user || !user._id) return;
     try {
       setPosting(true);
-      const res = await fetch('http://localhost:5000/api/posts', {
+      const res = await fetch(`${API_BASE}/api/posts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: composer.trim(), author: user._id, group: id })
@@ -298,7 +298,7 @@ export default function GroupPage() {
   const likePost = async (postId) => {
     if (!user || !user._id) { setError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
+      const res = await fetch(`${API_BASE}/api/posts/${postId}/like`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user._id })
       });
       if (!res.ok) throw new Error('Failed to like');
@@ -309,7 +309,7 @@ export default function GroupPage() {
   const updatePost = async (postId, newContent) => {
     if (!user || !user._id) { setError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/posts/${postId}`, {
+      const res = await fetch(`${API_BASE}/api/posts/${postId}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: newContent, authorId: user._id })
       });
       if (!res.ok) throw new Error('Failed to update post');
@@ -323,7 +323,7 @@ export default function GroupPage() {
     if (!deleteTarget) return;
     try {
       if (deleteTarget.type === 'post') {
-        const res = await fetch(`http://localhost:5000/api/posts/${deleteTarget.id}`, {
+        const res = await fetch(`${API_BASE}/api/posts/${deleteTarget.id}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ authorId: user._id })
@@ -331,7 +331,7 @@ export default function GroupPage() {
         if (!res.ok) throw new Error('Failed to delete post');
         await fetchGroup();
       } else if (deleteTarget.type === 'comment') {
-        const res = await fetch(`http://localhost:5000/api/comments/${deleteTarget.id}`, { method: 'DELETE' });
+        const res = await fetch(`${API_BASE}/api/comments/${deleteTarget.id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('Failed to delete comment');
         const postId = deleteTarget.postId;
         await fetchComments(postId);
@@ -360,7 +360,7 @@ export default function GroupPage() {
     setError(''); // Clear any previous errors
     
     try {
-      const resp = await fetch(`http://localhost:5000/api/groups/${id}`, { 
+      const resp = await fetch(`${API_BASE}/api/groups/${id}`, { 
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -394,7 +394,7 @@ export default function GroupPage() {
     try {
       setCommentsLoading(prev => ({ ...prev, [postId]: true }));
       const viewerQuery = user?._id ? `?viewerId=${user._id}` : '';
-      const res = await fetch(`http://localhost:5000/api/comments/post/${postId}${viewerQuery}`);
+      const res = await fetch(`${API_BASE}/api/comments/post/${postId}${viewerQuery}`);
       if (res.status === 403) {
         const payload = await res.json().catch(() => ({}));
         setCommentsByPost(prev => ({ ...prev, [postId]: [] }));
@@ -419,7 +419,7 @@ export default function GroupPage() {
   const addComment = async (postId, text, parentCommentId = null) => {
     if (!user || !user._id) { setError('Login required'); return; }
     try {
-      const res = await fetch('http://localhost:5000/api/comments', {
+      const res = await fetch(`${API_BASE}/api/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, author: user._id, post: postId, parentComment: parentCommentId })
@@ -432,7 +432,7 @@ export default function GroupPage() {
   const likeComment = async (commentId) => {
     if (!user || !user._id) { setError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/comments/${commentId}/like`, {
+      const res = await fetch(`${API_BASE}/api/comments/${commentId}/like`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user._id })
       });
       if (!res.ok) throw new Error('Failed to like comment');
@@ -450,7 +450,7 @@ export default function GroupPage() {
 
   const editComment = async (commentId, newText) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/comments/${commentId}`, {
+      const res = await fetch(`${API_BASE}/api/comments/${commentId}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: newText })
       });
       if (!res.ok) throw new Error('Failed to update comment');
@@ -1031,7 +1031,7 @@ export default function GroupPage() {
                             <div style={{ display: 'flex', gap: '8px' }}>
                               <button 
                                 onClick={async () => { 
-                                  await fetch(`http://localhost:5000/api/groups/${id}/approve`, { 
+                                  await fetch(`${API_BASE}/api/groups/${id}/approve`, { 
                                     method: 'POST', 
                                     headers: { 'Content-Type': 'application/json' }, 
                                     body: JSON.stringify({ requesterId: r._id || r, actorId: user._id }) 
@@ -1054,7 +1054,7 @@ export default function GroupPage() {
                               </button>
                               <button 
                                 onClick={async () => { 
-                                  await fetch(`http://localhost:5000/api/groups/${id}/decline`, { 
+                                  await fetch(`${API_BASE}/api/groups/${id}/decline`, { 
                                     method: 'POST', 
                                     headers: { 'Content-Type': 'application/json' }, 
                                     body: JSON.stringify({ requesterId: r._id || r, actorId: user._id }) 
@@ -2336,14 +2336,14 @@ export default function GroupPage() {
                               value={isMod ? 'Moderator' : 'Member'}
                               onChange={async (e) => {
                                 if (e.target.value === 'Moderator' && !isMod) {
-                                  await fetch(`http://localhost:5000/api/groups/${id}/add-moderator`, {
+                                  await fetch(`${API_BASE}/api/groups/${id}/add-moderator`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ userId: m._id || m, actorId: user._id })
                                   });
                                   await fetchGroup();
                                 } else if (e.target.value === 'Member' && isMod) {
-                                  await fetch(`http://localhost:5000/api/groups/${id}/remove-moderator`, {
+                                  await fetch(`${API_BASE}/api/groups/${id}/remove-moderator`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ userId: m._id || m, actorId: user._id })
@@ -2826,7 +2826,7 @@ function InviteSearch({ group, groupId, actorId, onDone }) {
     if (q.trim().length < 2) { setResults([]); return; }
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:5000/api/users');
+      const res = await fetch(`${API_BASE}/api/users`);
       const all = await res.json();
       const filtered = all.filter(u => (u.username || '').toLowerCase().includes(q.toLowerCase()))
         .slice(0, 10);
@@ -2840,7 +2840,7 @@ function InviteSearch({ group, groupId, actorId, onDone }) {
     setInfo('');
     setSending(userId);
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/invite`, {
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ toUserId: userId, actorId })

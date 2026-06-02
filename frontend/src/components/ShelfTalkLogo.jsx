@@ -21,9 +21,10 @@ const ShelfTalkLogo = ({ size = 'medium', variant = 'default', showTagline = fal
     }
   };
 
+  const baseUrl = import.meta.env.BASE_URL || '/';
   const logoSrc = type === 'navbar' 
-    ? `${process.env.PUBLIC_URL}/shelftalk-logo-navbar.png`
-    : `${process.env.PUBLIC_URL}/shelftalk-logo.png`;
+    ? `${baseUrl}shelftalk-logo-navbar.png`
+    : `${baseUrl}shelftalk-logo.png`;
 
   const currentSize = sizeConfig[type][size] || sizeConfig[type].medium;
 

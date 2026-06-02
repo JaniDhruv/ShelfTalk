@@ -43,6 +43,7 @@ const formatPresenceLabel = (presence) => {
 
 export default function Groups() {
   const { user } = useAuth();
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -64,7 +65,7 @@ export default function Groups() {
   const fetchGroups = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:5000/api/groups');
+      const res = await fetch(`${API_BASE}/api/groups`);
       if (!res.ok) throw new Error('Failed to load groups');
       const data = await res.json();
       setGroups(data);
@@ -102,7 +103,7 @@ export default function Groups() {
     e.preventDefault();
     if (!user || !user._id) { setError('Login required'); return; }
     try {
-      const res = await fetch('http://localhost:5000/api/groups', {
+      const res = await fetch(`${API_BASE}/api/groups`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), description: description.trim(), createdBy: user._id, visibility })
@@ -118,7 +119,7 @@ export default function Groups() {
   const leaveGroup = async (groupId) => {
     if (!user || !user._id) { setError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/remove-member`, {
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}/remove-member`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user._id })
       });
       if (!res.ok) throw new Error('Failed to leave group');
@@ -130,7 +131,7 @@ export default function Groups() {
     if (!leaveTargetGroup || !user?._id) return;
     setLeavingOwner(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${leaveTargetGroup._id}/remove-member`, {
+      const res = await fetch(`${API_BASE}/api/groups/${leaveTargetGroup._id}/remove-member`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user._id, newOwnerId: selectedNewOwner || undefined })
@@ -155,7 +156,7 @@ export default function Groups() {
   const deleteGroup = async (groupId) => {
     try {
       setDeletingGroup(true);
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete group');
       setShowDeleteModal(false);
       setDeleteTargetGroup(null);
@@ -166,7 +167,7 @@ export default function Groups() {
   const respondInvite = async (groupId, accept) => {
     if (!user || !user._id) { setError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/invite/respond`, {
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}/invite/respond`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ actorId: user._id, accept })
       });
       const data = await res.json();
@@ -179,7 +180,7 @@ export default function Groups() {
   const approveJoin = async (groupId, requesterId) => {
     if (!user || !user._id) { setError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/approve`, {
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}/approve`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requesterId, actorId: user._id })
       });
       const data = await res.json();
@@ -192,7 +193,7 @@ export default function Groups() {
   const declineJoin = async (groupId, requesterId) => {
     if (!user || !user._id) { setError('Login required'); return; }
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/decline`, {
+      const res = await fetch(`${API_BASE}/api/groups/${groupId}/decline`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requesterId, actorId: user._id })
       });
       const data = await res.json();

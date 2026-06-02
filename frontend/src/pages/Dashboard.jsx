@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
   const { user: authUser } = useAuth();
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   const [userData, setUserData] = useState(null);
   const [stats, setStats] = useState({
     totalBooks: 0,
@@ -18,7 +19,7 @@ export default function Dashboard() {
       if (authUser && authUser._id) {
         try {
           // Fetch user data
-          const userResponse = await fetch(`http://localhost:5000/api/users/${authUser._id}`);
+          const userResponse = await fetch(`${API_BASE}/api/users/${authUser._id}`);
           if (userResponse.ok) {
             const userData = await userResponse.json();
             setUserData(userData);

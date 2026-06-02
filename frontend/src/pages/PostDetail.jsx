@@ -49,7 +49,7 @@ export default function PostDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [commentText, setCommentText] = useState('');
-  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   const isGuest = !user;
   const [guestPrompt, setGuestPrompt] = useState('');
   const viewerId = user?._id || user?.id || null;
@@ -435,7 +435,7 @@ export default function PostDetail() {
 
 function CommentItem({ comment, level = 0, currentUser, onGuestAction }) {
   const { id } = useParams();
-  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   const [showReplies, setShowRepliesLocal] = useState(false);
   const [replyingToLocal, setReplyingToLocal] = useState(false);
   const [replyText, setReplyText] = useState('');

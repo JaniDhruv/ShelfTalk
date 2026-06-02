@@ -71,7 +71,7 @@ export default function PostsPage() {
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [showReplies, setShowReplies] = useState({});
-  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   // User popover state
   const [openUserMenu, setOpenUserMenu] = useState(null); // post id keyed
   const userMenuRef = useRef(null);
@@ -149,7 +149,7 @@ export default function PostsPage() {
   const fetchPosts = async () => {
     try {
       setPostsLoading(true);
-      const response = await fetch('http://localhost:5000/api/posts');
+      const response = await fetch(`${API_BASE}/api/posts`);
       if (response.ok) {
         const data = await response.json();
         setPosts(data);
@@ -158,7 +158,7 @@ export default function PostsPage() {
         const counts = {};
         for (const post of data) {
           try {
-            const commentResponse = await fetch(`http://localhost:5000/api/comments/post/${post._id}`);
+            const commentResponse = await fetch(`${API_BASE}/api/comments/post/${post._id}`);
             if (commentResponse.ok) {
               const postComments = await commentResponse.json();
               counts[post._id] = postComments.length;
@@ -212,7 +212,7 @@ export default function PostsPage() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/posts', {
+      const response = await fetch(`${API_BASE}/api/posts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -251,7 +251,7 @@ export default function PostsPage() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/posts/${postId}/like`, {
+      const response = await fetch(`${API_BASE}/api/posts/${postId}/like`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
@@ -283,7 +283,7 @@ export default function PostsPage() {
     }
 
     try {
-      const res = await fetch(`http://localhost:5000/api/posts/${postId}`, {
+      const res = await fetch(`${API_BASE}/api/posts/${postId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -325,7 +325,7 @@ export default function PostsPage() {
 
     try {
       if (deleteTarget.type === 'post') {
-        const res = await fetch(`http://localhost:5000/api/posts/${deleteTarget.id}`, {
+        const res = await fetch(`${API_BASE}/api/posts/${deleteTarget.id}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ authorId: userId })
@@ -335,7 +335,7 @@ export default function PostsPage() {
         
         await fetchPosts();
       } else if (deleteTarget.type === 'comment') {
-        const res = await fetch(`http://localhost:5000/api/comments/${deleteTarget.id}`, {
+        const res = await fetch(`${API_BASE}/api/comments/${deleteTarget.id}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ authorId: userId })
@@ -358,7 +358,7 @@ export default function PostsPage() {
   const fetchComments = async (postId) => {
     try {
       setCommentsLoading(prev => ({ ...prev, [postId]: true }));
-      const response = await fetch(`http://localhost:5000/api/comments/post/${postId}`);
+      const response = await fetch(`${API_BASE}/api/comments/post/${postId}`);
       if (response.ok) {
         const data = await response.json();
         setComments(prev => ({ ...prev, [postId]: data }));
@@ -392,7 +392,7 @@ export default function PostsPage() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/comments', {
+      const response = await fetch(`${API_BASE}/api/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -430,7 +430,7 @@ export default function PostsPage() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/comments/${commentId}/like`, {
+      const response = await fetch(`${API_BASE}/api/comments/${commentId}/like`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
@@ -461,7 +461,7 @@ export default function PostsPage() {
     }
 
     try {
-      const res = await fetch(`http://localhost:5000/api/comments/${commentId}`, {
+      const res = await fetch(`${API_BASE}/api/comments/${commentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -524,7 +524,7 @@ export default function PostsPage() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/comments', {
+      const response = await fetch(`${API_BASE}/api/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

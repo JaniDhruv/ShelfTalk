@@ -4,6 +4,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import './Chat.css';
 import ConfirmationModal from '../components/ConfirmationModal';
 import GuestGate from '../components/GuestGate';
+import { getChatSocket } from '../lib/socket';
 
 // Helper function to check if two dates are the same day
 const isSameDay = (first, second) => {
@@ -77,6 +78,44 @@ const formatChatTime = (date) => {
   
   // Older - show full date
   return messageDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const getEntityId = (value) => {
+  if (!value) return '';
+  return (value._id || value.id || value).toString();
+};
+
+const getMessageConversationId = (msg) => getEntityId(msg?.conversation);
+
+const sortChatsByActivity = (items) => {
+  return [...items].sort((a, b) => {
+    const aTime = new Date(a.lastMessageAt || a.updatedAt || 0).getTime();
+    const bTime = new Date(b.lastMessageAt || b.updatedAt || 0).getTime();
+    return bTime - aTime;
+  });
+};
+
+const applyPresenceToChat = (chat, presence) => {
+  if (!chat?.members || !presence?.userId) return chat;
+
+  let changed = false;
+  const members = chat.members.map((member) => {
+    if (getEntityId(member) !== presence.userId || typeof member !== 'object') {
+      return member;
+    }
+
+    changed = true;
+    return {
+      ...member,
+      profile: {
+        ...(member.profile || {}),
+        isOnline: presence.isOnline,
+        lastSeen: presence.lastSeen,
+      },
+    };
+  });
+
+  return changed ? { ...chat, members } : chat;
 };
 
 const formatLastMessage = (chat, currentUserId) => {
@@ -166,64 +205,190 @@ export default function Chat() {
   const [openMsgMenuId, setOpenMsgMenuId] = useState(null);
   const messagesEndRef = useRef(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const userId = user?._id || user?.id;
+  const socketRef = useRef(null);
+  const activeChatIdRef = useRef(null);
 
-  const loadMessages = useCallback(async (opts = { silent: false }) => {
-    if (isGuest || !activeChat?._id) return;
-    try {
-      if (!opts.silent) setLoadingMessages(true);
-      const resp = await fetch(`${API_BASE}/api/chat/messages/${activeChat._id}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        setMessages(data || []);
-      }
-      const uid = user?._id || user?.id;
-      const blockedBy = activeChat?.blockedBy || [];
-      const blockedByIds = blockedBy.map(b => (typeof b === 'string' ? b : b?._id || b));
-      setIsBlockedByMe(blockedByIds.includes(uid));
-      const otherId = (activeChat.members || []).find(m => (m._id || m) !== uid)?._id || (activeChat.members || []).find(m => m !== uid);
-      setIsBlockedByOther(blockedByIds.includes(otherId));
-    } catch (e) {
-      if (!opts.silent) console.error('Failed to load messages', e);
-    } finally {
-      if (!opts.silent) setLoadingMessages(false);
+  const updateBlockState = useCallback((chat) => {
+    if (!chat || !userId) {
+      setIsBlockedByMe(false);
+      setIsBlockedByOther(false);
+      return;
     }
-  }, [API_BASE, activeChat, user, isGuest]);
+
+    const blockedBy = chat.blockedBy || [];
+    const blockedByIds = blockedBy.map(b => getEntityId(b));
+    setIsBlockedByMe(blockedByIds.includes(userId));
+    const other = (chat.members || []).find(m => getEntityId(m) !== userId);
+    setIsBlockedByOther(blockedByIds.includes(getEntityId(other)));
+  }, [userId]);
+
+  const upsertConversation = useCallback((conversation) => {
+    if (!conversation?._id) return;
+
+    setChats(prev => {
+      const exists = prev.some(chat => chat._id === conversation._id);
+      const next = exists
+        ? prev.map(chat => (chat._id === conversation._id ? conversation : chat))
+        : [conversation, ...prev];
+      return sortChatsByActivity(next);
+    });
+
+    setActiveChat(prev => (prev?._id === conversation._id ? conversation : prev));
+  }, []);
+
+  const applyConversationSnapshot = useCallback((data = []) => {
+    const sorted = sortChatsByActivity(data || []);
+    const conversationId = searchParams.get('conversation');
+
+    setChats(sorted);
+    setActiveChat(prev => {
+      if (conversationId) {
+        const target = sorted.find(chat => chat._id === conversationId && chat.type !== 'group');
+        if (target) return target;
+      }
+
+      if (prev?._id) {
+        const updated = sorted.find(chat => chat._id === prev._id && chat.type !== 'group');
+        if (updated) return updated;
+      }
+
+      return sorted.find(chat => chat.type !== 'group') || null;
+    });
+  }, [searchParams]);
+
+  const mergeMessage = useCallback((incoming) => {
+    if (!incoming || getMessageConversationId(incoming) !== activeChatIdRef.current) return;
+
+    setMessages(prev => {
+      const incomingId = getEntityId(incoming);
+      const exists = prev.some(msg => getEntityId(msg) === incomingId);
+      const next = exists
+        ? prev.map(msg => (getEntityId(msg) === incomingId ? incoming : msg))
+        : [...prev, incoming];
+
+      return next.sort((a, b) => {
+        const aTime = new Date(a.createdAt || 0).getTime();
+        const bTime = new Date(b.createdAt || 0).getTime();
+        return aTime - bTime;
+      });
+    });
+  }, []);
+
+  const removeMessage = useCallback(({ messageId, conversationId }) => {
+    if (conversationId !== activeChatIdRef.current) return;
+    setMessages(prev => prev.filter(msg => getEntityId(msg) !== messageId));
+  }, []);
 
   useEffect(() => {
-    const loadConversations = async () => {
-      if (isGuest) return;
-      if (!user?._id && !user?.id) return;
-      const uid = user?._id || user?.id;
-      try {
-  const resp = await fetch(`${API_BASE}/api/chat/conversations/${uid}`);
-        const data = await resp.json();
-        setChats(data || []);
+    activeChatIdRef.current = activeChat?._id || null;
+    updateBlockState(activeChat);
+  }, [activeChat, updateBlockState]);
 
-        // Check if there's a conversation ID in the URL
-        const conversationId = searchParams.get('conversation');
-        if (conversationId) {
-          const targetChat = data.find(chat => chat._id === conversationId && chat.type !== 'group');
-          if (targetChat) {
-            setActiveChat(targetChat);
-          }
+  useEffect(() => {
+    if (isGuest || !userId) return;
+
+    const socket = getChatSocket(userId);
+    socketRef.current = socket;
+
+    const requestConversations = () => {
+      socket.timeout(8000).emit('chat:list', { userId }, (error, response) => {
+        if (error) {
+          console.error('Failed to load conversations over socket', error);
+          return;
         }
+        if (response?.ok) {
+          applyConversationSnapshot(response.conversations || []);
+        } else if (response) {
+          console.error(response.message || 'Failed to load conversations');
+        }
+      });
+    };
 
-        // Ensure active chat remains a direct message
-        setActiveChat(prev => {
-          if (prev?.type && prev.type !== 'group') return prev;
-          const fallback = (data || []).find(chat => chat.type !== 'group');
-          return fallback || null;
-        });
-      } catch (e) {
-        console.error('Failed to load conversations', e);
+    const handleConversationUpdated = (conversation) => {
+      upsertConversation(conversation);
+    };
+
+    const handleMessageCreated = (incoming) => {
+      mergeMessage(incoming);
+    };
+
+    const handleMessageEdited = (incoming) => {
+      mergeMessage(incoming);
+    };
+
+    const handleMessageDeleted = (payload) => {
+      removeMessage(payload);
+    };
+
+    const handlePresenceUpdate = (presence) => {
+      setChats(prev => prev.map(chat => applyPresenceToChat(chat, presence)));
+      setActiveChat(prev => applyPresenceToChat(prev, presence));
+    };
+
+    socket.on('connect', requestConversations);
+    socket.on('chat:conversationUpdated', handleConversationUpdated);
+    socket.on('chat:messageCreated', handleMessageCreated);
+    socket.on('chat:messageEdited', handleMessageEdited);
+    socket.on('chat:messageDeleted', handleMessageDeleted);
+    socket.on('presence:update', handlePresenceUpdate);
+
+    if (socket.connected) {
+      requestConversations();
+    }
+
+    return () => {
+      socket.off('connect', requestConversations);
+      socket.off('chat:conversationUpdated', handleConversationUpdated);
+      socket.off('chat:messageCreated', handleMessageCreated);
+      socket.off('chat:messageEdited', handleMessageEdited);
+      socket.off('chat:messageDeleted', handleMessageDeleted);
+      socket.off('presence:update', handlePresenceUpdate);
+    };
+  }, [applyConversationSnapshot, isGuest, mergeMessage, removeMessage, upsertConversation, userId]);
+
+  const loadMessages = useCallback((opts = { silent: false }) => {
+    if (isGuest || !activeChat?._id || !userId) return;
+
+    const socket = socketRef.current || getChatSocket(userId);
+    socketRef.current = socket;
+    if (!opts.silent) setLoadingMessages(true);
+
+    socket.timeout(8000).emit('chat:join', {
+      conversationId: activeChat._id,
+      userId,
+    }, (error, response) => {
+      if (!opts.silent) setLoadingMessages(false);
+
+      if (error) {
+        if (!opts.silent) console.error('Failed to join chat room', error);
+        return;
+      }
+
+      if (response?.ok) {
+        setMessages(response.messages || []);
+        if (response.conversation) {
+          upsertConversation(response.conversation);
+        }
+      } else if (!opts.silent) {
+        alert(response?.message || 'Failed to load messages');
+      }
+    });
+  }, [activeChat?._id, isGuest, upsertConversation, userId]);
+
+  useEffect(() => {
+    if (!activeChat?._id) {
+      setMessages([]);
+      return undefined;
+    }
+
+    loadMessages();
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.emit('chat:leave', { conversationId: activeChat._id });
       }
     };
-    loadConversations();
-  }, [user, searchParams, API_BASE, isGuest]);
-
-  useEffect(() => {
-    loadMessages();
-  }, [loadMessages]);
+  }, [activeChat?._id, loadMessages]);
 
   // Scroll to bottom when messages load or change
   useEffect(() => {
@@ -232,36 +397,32 @@ export default function Chat() {
     }
   }, [messages]);
 
-  // Auto-refresh messages every 10 seconds when a chat is active
-  useEffect(() => {
-    if (isGuest || !activeChat?._id) return; 
-    const interval = setInterval(() => {
-      loadMessages({ silent: true });
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [activeChat, loadMessages, isGuest]);
-
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!message.trim() || !activeChat?._id) return;
-    const uid = user?._id || user?.id;
-    try {
-      const resp = await fetch(`${API_BASE}/api/chat/messages/${activeChat._id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ senderId: uid, content: message.trim() }),
-      });
-      if (resp.ok) {
-        const saved = await resp.json();
-        setMessages(prev => [...prev, { id: saved._id, senderId: saved.sender?._id || saved.sender, senderName: saved.sender?.username, message: saved.content, timestamp: new Date(saved.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), type: saved.type }]);
-        setMessage('');
-      } else {
-        const err = await resp.json();
-        alert(err?.message || 'Failed to send message');
+    if (!message.trim() || !activeChat?._id || !userId) return;
+    const content = message.trim();
+    const socket = socketRef.current || getChatSocket(userId);
+    socketRef.current = socket;
+    setMessage('');
+
+    socket.timeout(8000).emit('chat:send', {
+      conversationId: activeChat._id,
+      senderId: userId,
+      content,
+    }, (error, response) => {
+      if (error || !response?.ok) {
+        setMessage(content);
+        alert(response?.message || 'Failed to send message');
+        return;
       }
-    } catch (e) {
-      console.error('Failed to send message', e);
-    }
+
+      if (response.message) {
+        mergeMessage(response.message);
+      }
+      if (response.conversation) {
+        upsertConversation(response.conversation);
+      }
+    });
   };
 
   const handleEditMessage = (message) => {
@@ -277,40 +438,30 @@ export default function Chat() {
       alert('Message content cannot be empty');
       return;
     }
+    if (!userId) return;
 
-    const uid = user?._id || user?.id;
-    try {
-      const resp = await fetch(`${API_BASE}/api/chat/messages/${messageId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          content: editContent.trim(),
-          senderId: uid 
-        })
-      });
+    const socket = socketRef.current || getChatSocket(userId);
+    socketRef.current = socket;
 
-      if (resp.ok) {
+    socket.timeout(8000).emit('chat:edit', {
+      messageId,
+      senderId: userId,
+      content: editContent.trim(),
+    }, (error, response) => {
+      if (!error && response?.ok) {
         setEditingMessage(null);
         setEditContent('');
-        // Reload messages to show updated content
-        const loadMessages = async () => {
-          if (!activeChat?._id) return;
-          try {
-            const resp = await fetch(`${API_BASE}/api/chat/messages/${activeChat._id}`);
-            const data = await resp.json();
-            setMessages(data || []);
-          } catch (e) {
-            console.error('Failed to load messages', e);
-          }
-        };
-        loadMessages();
-      } else {
-        const err = await resp.json();
-        alert(err?.message || 'Failed to update message');
+        if (response.message) {
+          mergeMessage(response.message);
+        }
+        if (response.conversation) {
+          upsertConversation(response.conversation);
+        }
+        return;
       }
-    } catch (e) {
-      console.error('Failed to update message', e);
-    }
+
+      alert(response?.message || 'Failed to update message');
+    });
   };
 
   const handleCancelEdit = () => {
@@ -325,30 +476,36 @@ export default function Chat() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
+    if (!userId) return;
 
-    const uid = user?._id || user?.id;
-    try {
-      if (deleteTarget.type === 'message') {
-        const resp = await fetch(`${API_BASE}/api/chat/messages/${deleteTarget.id}`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ senderId: uid })
-        });
+    if (deleteTarget.type === 'message') {
+      const socket = socketRef.current || getChatSocket(userId);
+      socketRef.current = socket;
 
-        if (resp.ok) {
-          // Remove message from local state
-          setMessages(prev => prev.filter(msg => (msg._id || msg.id) !== deleteTarget.id));
+      socket.timeout(8000).emit('chat:delete', {
+        messageId: deleteTarget.id,
+        senderId: userId,
+      }, (error, response) => {
+        if (error || !response?.ok) {
+          alert(response?.message || 'Failed to delete message');
         } else {
-          const err = await resp.json();
-          alert(err?.message || 'Failed to delete message');
+          removeMessage({
+            messageId: deleteTarget.id,
+            conversationId: activeChatIdRef.current,
+          });
+          if (response.conversation) {
+            upsertConversation(response.conversation);
+          }
         }
-      }
-    } catch (e) {
-      console.error('Failed to delete message', e);
-    } finally {
-      setShowDeleteModal(false);
-      setDeleteTarget(null);
+
+        setShowDeleteModal(false);
+        setDeleteTarget(null);
+      });
+      return;
     }
+
+    setShowDeleteModal(false);
+    setDeleteTarget(null);
   };
 
   const getOtherParticipant = (chat) => {
@@ -412,31 +569,23 @@ export default function Chat() {
   };
 
   const handleBlockToggle = async () => {
-    if (!activeChat?._id) return;
-    const uid = user?._id || user?.id;
-    const endpoint = isBlockedByMe ? 'unblock' : 'block';
-    try {
-      const resp = await fetch(`${API_BASE}/api/chat/conversations/${activeChat._id}/${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: uid })
-      });
-      if (resp.ok) {
-        const updated = await resp.json();
-        setActiveChat(updated);
-        const blockedByIds = (updated.blockedBy || []).map(b => (typeof b === 'string' ? b : b?._id || b));
-        setIsBlockedByMe(blockedByIds.includes(uid));
-        const other = getOtherParticipant(updated);
-        const otherId = other?._id || other;
-        setIsBlockedByOther(blockedByIds.includes(otherId));
-        setChats(prev => prev.map(c => (c._id === updated._id ? updated : c)));
-      } else {
-        const err = await resp.json();
-        alert(err?.message || 'Failed to update block state');
+    if (!activeChat?._id || !userId) return;
+    const socket = socketRef.current || getChatSocket(userId);
+    socketRef.current = socket;
+
+    socket.timeout(8000).emit('chat:block', {
+      conversationId: activeChat._id,
+      userId,
+      blocked: !isBlockedByMe,
+    }, (error, response) => {
+      if (!error && response?.ok) {
+        upsertConversation(response.conversation);
+        updateBlockState(response.conversation);
+        return;
       }
-    } catch (e) {
-      console.error('Error updating block state', e);
-    }
+
+      alert(response?.message || 'Failed to update block state');
+    });
   };
 
   const searchForUsers = useCallback(async (query) => {
@@ -463,33 +612,29 @@ export default function Chat() {
     }
   }, [user, isGuest]);
 
-  const createDirectMessage = async (userId) => {
+  const createDirectMessage = async (targetUserId) => {
+    if (!userId) return;
     setIsCreatingChat(true);
-    try {
-      const uid = user?._id || user?.id;
-      const response = await fetch(`${API_BASE}/api/chat/conversations/dm`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          participants: [uid, userId],
-        }),
-      });
+    const socket = socketRef.current || getChatSocket(userId);
+    socketRef.current = socket;
 
-      if (response.ok) {
-        const newChat = await response.json();
-        setChats(prev => [newChat, ...prev]);
+    socket.timeout(8000).emit('chat:createDm', {
+      userId,
+      participants: [userId, targetUserId],
+    }, (error, response) => {
+      if (!error && response?.ok) {
+        const newChat = response.conversation;
+        upsertConversation(newChat);
         setActiveChat(newChat);
         setShowNewChatModal(false);
         setSearchUsers('');
         setFoundUsers([]);
+      } else {
+        alert(response?.message || 'Unable to start chat right now.');
       }
-    } catch (error) {
-      console.error('Error creating DM:', error);
-    } finally {
+
       setIsCreatingChat(false);
-    }
+    });
   };
 
   useEffect(() => {
@@ -590,28 +735,23 @@ export default function Chat() {
 
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
-    if (!file || !activeChat?._id) return;
+    if (!file || !activeChat?._id || !userId) return;
     if (isBlockedByMe || isBlockedByOther) return;
-    const uid = user?._id || user?.id;
     const form = new FormData();
     form.append('file', file);
-    form.append('senderId', uid);
+    form.append('senderId', userId);
     setUploading(true);
     try {
-      console.log('[Upload] Selected file:', file?.name, file?.type, file?.size);
       const resp = await fetch(`${API_BASE}/api/chat/messages/${activeChat._id}/attachment`, {
         method: 'POST',
         body: form,
       });
-      console.log('[Upload] Response status:', resp.status);
       if (resp.ok) {
         const saved = await resp.json();
-        console.log('[Upload] Saved message:', saved);
-        setMessages(prev => [...prev, saved]);
+        mergeMessage(saved);
       } else {
         const err = await resp.json();
         alert(err?.message || 'Upload failed');
-        console.error('[Upload] Error response:', err);
       }
     } catch (err) {
       console.error('Upload error', err);

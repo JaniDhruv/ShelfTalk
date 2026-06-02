@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/ConfirmationModal';
 import GuestGate from '../components/GuestGate';
+import { getChatSocket } from '../lib/socket';
 import './PostsPage.css';
 
 // Helper function to check if two dates are the same day
@@ -79,11 +80,19 @@ const formatPresenceLabel = (presence) => {
   return humanized ? `Last seen ${humanized}` : 'Offline';
 };
 
+const getEntityId = (value) => {
+  if (!value) return '';
+  return (value._id || value.id || value).toString();
+};
+
+const getMessageConversationId = (msg) => getEntityId(msg?.conversation);
+
 export default function GroupPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const isGuest = !user;
+  const userId = user?._id || user?.id;
 
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -103,6 +112,8 @@ export default function GroupPage() {
   const [chatError, setChatError] = useState('');
   const [lastRefresh, setLastRefresh] = useState(null);
   const chatMessagesEndRef = useRef(null);
+  const socketRef = useRef(null);
+  const groupConversationIdRef = useRef(null);
   const [editingChatMessage, setEditingChatMessage] = useState(null);
   const [editChatContent, setEditChatContent] = useState('');
   const [openChatMsgMenuId, setOpenChatMsgMenuId] = useState(null);
@@ -130,9 +141,9 @@ export default function GroupPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
-  const isMember = user && user._id && group && group.members?.some(m => (m._id || m) === user._id);
-  const isOwner = user && user._id && group && (group.createdBy?._id || group.createdBy) === user._id;
-  const isModerator = user && user._id && group && group.moderators?.some(m => (m._id || m) === user._id);
+  const isMember = userId && group && group.members?.some(m => getEntityId(m) === userId);
+  const isOwner = userId && group && getEntityId(group.createdBy) === userId;
+  const isModerator = userId && group && group.moderators?.some(m => getEntityId(m) === userId);
   const canModerate = isOwner || isModerator;
   const isPrivate = group && (group.visibility === 'private');
   const ownerPresence = buildPresence(group?.createdBy);
@@ -462,94 +473,124 @@ export default function GroupPage() {
   };
 
   // Group Chat Functions
-  const fetchChatMessages = useCallback(async () => {
-    if (!group?._id || !isMember || !user?._id) return;
-    try {
-      setLoadingChat(true);
-      setChatError('');
-      const resp = await fetch(`${API_BASE}/api/chat/groups/${group._id}/messages?userId=${user._id}`);
-      if (resp.ok) {
-        const data = await resp.json();
-        setChatMessages(data || []);
-        setLastRefresh(new Date());
-      } else {
-        try {
-          const error = await resp.json();
-          setChatError(error.message || 'Failed to load chat messages');
-        } catch {
-          setChatError('Failed to load chat messages');
-        }
-      }
-    } catch (e) {
-      setChatError('Connection error. Please check your internet connection.');
-    } finally {
-      setLoadingChat(false);
-    }
-  }, [group?._id, isMember, user?._id, API_BASE]);
+  const mergeChatMessage = useCallback((incoming) => {
+    if (!incoming || !groupConversationIdRef.current) return;
+    if (getMessageConversationId(incoming) !== groupConversationIdRef.current) return;
 
-  const initializeGroupChat = useCallback(async () => {
-    if (!group?._id || !isMember || !user?._id) return;
-    
-    try {
-      // Create or get group conversation
-      const resp = await fetch(`${API_BASE}/api/chat/groups/${group._id}/conversation`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user._id }),
+    setChatMessages(prev => {
+      const incomingId = getEntityId(incoming);
+      const exists = prev.some(msg => getEntityId(msg) === incomingId);
+      const next = exists
+        ? prev.map(msg => (getEntityId(msg) === incomingId ? incoming : msg))
+        : [...prev, incoming];
+
+      return next.sort((a, b) => {
+        const aTime = new Date(a.createdAt || 0).getTime();
+        const bTime = new Date(b.createdAt || 0).getTime();
+        return aTime - bTime;
       });
-      if (resp.ok) {
-        // Conversation is ready, now fetch messages
-        await fetchChatMessages();
-      } else {
-        try {
-          const error = await resp.json();
-          setError(error.message || 'Failed to initialize group chat');
-        } catch {
-          setError('Failed to initialize group chat');
-        }
+    });
+    setLastRefresh(new Date());
+  }, []);
+
+  const removeChatMessage = useCallback(({ messageId, conversationId }) => {
+    if (conversationId !== groupConversationIdRef.current) return;
+    setChatMessages(prev => prev.filter(msg => getEntityId(msg) !== messageId));
+    setLastRefresh(new Date());
+  }, []);
+
+  const fetchChatMessages = useCallback(() => {
+    if (!group?._id || !isMember || !userId) return;
+
+    const socket = socketRef.current || getChatSocket(userId);
+    socketRef.current = socket;
+    setLoadingChat(true);
+    setChatError('');
+
+    socket.timeout(8000).emit('group:join', {
+      groupId: group._id,
+      userId,
+    }, (error, response) => {
+      setLoadingChat(false);
+
+      if (error) {
+        setChatError('Connection error. Please check your internet connection.');
+        return;
       }
-    } catch (e) {
-      setError('Failed to initialize group chat');
-    }
-  }, [group?._id, isMember, user?._id, API_BASE, fetchChatMessages]);
+
+      if (response?.ok) {
+        groupConversationIdRef.current = getEntityId(response.conversation);
+        setChatMessages(response.messages || []);
+        setLastRefresh(new Date());
+        return;
+      }
+
+      setChatError(response?.message || 'Failed to load chat messages');
+    });
+  }, [group?._id, isMember, userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const socket = getChatSocket(userId);
+    socketRef.current = socket;
+
+    const handleMessageCreated = (incoming) => {
+      mergeChatMessage(incoming);
+    };
+
+    const handleMessageEdited = (incoming) => {
+      mergeChatMessage(incoming);
+    };
+
+    const handleMessageDeleted = (payload) => {
+      removeChatMessage(payload);
+    };
+
+    socket.on('chat:messageCreated', handleMessageCreated);
+    socket.on('chat:messageEdited', handleMessageEdited);
+    socket.on('chat:messageDeleted', handleMessageDeleted);
+
+    return () => {
+      socket.off('chat:messageCreated', handleMessageCreated);
+      socket.off('chat:messageEdited', handleMessageEdited);
+      socket.off('chat:messageDeleted', handleMessageDeleted);
+    };
+  }, [mergeChatMessage, removeChatMessage, userId]);
 
   const sendChatMessage = async (e) => {
     e.preventDefault();
-    if (!chatMessage.trim() || !group?._id || !user?._id || sendingMessage) return;
+    if (!chatMessage.trim() || !group?._id || !userId || sendingMessage) return;
     
     const messageContent = chatMessage.trim();
     setChatMessage(''); // Clear input immediately for better UX
     setSendingMessage(true);
     setChatError(''); // Clear any previous errors
-    
-    try {
-      const resp = await fetch(`${API_BASE}/api/chat/groups/${group._id}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          senderId: user._id, 
-          content: messageContent,
-          type: 'text'
-        }),
-      });
-      if (resp.ok) {
-        const saved = await resp.json();
-        setChatMessages(prev => [...prev, saved]);
-      } else {
-        try {
-          const err = await resp.json();
-          setChatError(err?.message || 'Failed to send message');
-        } catch {
-          setChatError('Failed to send message');
-        }
-        setChatMessage(messageContent); // Restore message on error
-      }
-    } catch (e) {
-      setChatError('Connection error. Message not sent.');
-      setChatMessage(messageContent); // Restore message on error
-    } finally {
+
+    const socket = socketRef.current || getChatSocket(userId);
+    socketRef.current = socket;
+
+    socket.timeout(8000).emit('group:send', {
+      groupId: group._id,
+      senderId: userId,
+      content: messageContent,
+      type: 'text',
+    }, (error, response) => {
       setSendingMessage(false);
-    }
+
+      if (error || !response?.ok) {
+        setChatError(response?.message || 'Connection error. Message not sent.');
+        setChatMessage(messageContent); // Restore message on error
+        return;
+      }
+
+      if (response.message) {
+        if (response.conversation) {
+          groupConversationIdRef.current = getEntityId(response.conversation);
+        }
+        mergeChatMessage(response.message);
+      }
+    });
   };
 
   const handleEditChatMessage = (message) => {
@@ -565,32 +606,27 @@ export default function GroupPage() {
       alert('Message content cannot be empty');
       return;
     }
+    if (!userId) return;
 
-    try {
-      const resp = await fetch(`${API_BASE}/api/chat/messages/${messageId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          content: editChatContent.trim(),
-          senderId: user._id 
-        })
-      });
+    const socket = socketRef.current || getChatSocket(userId);
+    socketRef.current = socket;
 
-      if (resp.ok) {
-        const updated = await resp.json();
-        setChatMessages(prev => prev.map(msg => 
-          (msg._id || msg.id) === messageId ? updated : msg
-        ));
+    socket.timeout(8000).emit('chat:edit', {
+      messageId,
+      senderId: userId,
+      content: editChatContent.trim(),
+    }, (error, response) => {
+      if (!error && response?.ok) {
         setEditingChatMessage(null);
         setEditChatContent('');
-      } else {
-        const err = await resp.json();
-        alert(err?.message || 'Failed to update message');
+        if (response.message) {
+          mergeChatMessage(response.message);
+        }
+        return;
       }
-    } catch (e) {
-      console.error('Failed to update message', e);
-      alert('Failed to update message');
-    }
+
+      alert(response?.message || 'Failed to update message');
+    });
   };
 
   const handleCancelChatEdit = () => {
@@ -605,28 +641,27 @@ export default function GroupPage() {
 
   const confirmDeleteChatMessage = async () => {
     if (!deleteChatMsgTarget) return;
+    if (!userId) return;
 
-    try {
-      const resp = await fetch(`${API_BASE}/api/chat/messages/${deleteChatMsgTarget}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ senderId: user._id })
-      });
+    const socket = socketRef.current || getChatSocket(userId);
+    socketRef.current = socket;
 
-      if (resp.ok) {
-        // Remove message from local state
-        setChatMessages(prev => prev.filter(msg => (msg._id || msg.id) !== deleteChatMsgTarget));
+    socket.timeout(8000).emit('chat:delete', {
+      messageId: deleteChatMsgTarget,
+      senderId: userId,
+    }, (error, response) => {
+      if (error || !response?.ok) {
+        alert(response?.message || 'Failed to delete message');
       } else {
-        const err = await resp.json();
-        alert(err?.message || 'Failed to delete message');
+        removeChatMessage({
+          messageId: deleteChatMsgTarget,
+          conversationId: groupConversationIdRef.current,
+        });
       }
-    } catch (e) {
-      console.error('Failed to delete message', e);
-      alert('Failed to delete message');
-    } finally {
+
       setShowDeleteChatMsgModal(false);
       setDeleteChatMsgTarget(null);
-    }
+    });
   };
 
   // Auto-scroll to bottom when new messages arrive
@@ -639,23 +674,15 @@ export default function GroupPage() {
   // Load chat messages when switching to chat tab
   useEffect(() => {
     if (activeTab === 'chat' && group && isMember) {
-      initializeGroupChat();
+      fetchChatMessages();
     }
-  }, [activeTab, group, isMember, initializeGroupChat]);
-
-  // Auto-refresh messages every 10 seconds when chat tab is active
-  useEffect(() => {
-    let interval;
-    if (activeTab === 'chat' && group && isMember && !loadingChat) {
-      interval = setInterval(() => {
-        fetchChatMessages();
-      }, 10000); // Refresh every 10 seconds
-    }
-    
     return () => {
-      if (interval) clearInterval(interval);
+      const conversationId = groupConversationIdRef.current;
+      if (conversationId && socketRef.current) {
+        socketRef.current.emit('chat:leave', { conversationId });
+      }
     };
-  }, [activeTab, group, isMember, loadingChat, fetchChatMessages]);
+  }, [activeTab, group?._id, isMember, fetchChatMessages]);
 
   if (isGuest) {
     return (

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { disconnectChatSocket } from '../lib/socket';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
@@ -89,6 +90,7 @@ export function AuthProvider({ children }) {
     setUser(null);
     localStorage.removeItem('loggedInUser');
     localStorage.removeItem('token');
+    disconnectChatSocket();
   }, [markStatus, user]);
 
   useEffect(() => {

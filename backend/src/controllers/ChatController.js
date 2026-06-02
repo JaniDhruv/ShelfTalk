@@ -1,38 +1,52 @@
-import Conversation from '../models/Conversation.js';
-import Message from '../models/Message.js';
-import Group from '../models/Group.js';
 import path from 'path';
+import {
+  createDmConversationForUsers,
+  createGroupConversationForUser,
+  deleteChatMessage,
+  editChatMessage,
+  getConversationMessages as getConversationMessagesService,
+  getGroupMessagesForUser,
+  listConversationsForUser,
+  sendConversationAttachment,
+  sendConversationMessage,
+  sendGroupMessage as sendGroupMessageService,
+  setConversationBlocked,
+} from '../services/chatService.js';
+import {
+  emitConversationUpdated,
+  emitMessageCreated,
+  emitMessageDeleted,
+  emitMessageEdited,
+} from '../socket/chatEvents.js';
+
+const sendError = (res, error, fallbackStatus = 400) => {
+  res.status(error?.status || fallbackStatus).json({
+    message: error?.message || 'Unexpected chat error',
+    error: error?.message,
+  });
+};
+
+const getIo = (req) => req.app.get('io');
 
 export const listConversations = async (req, res) => {
   try {
-    const userId = req.params.userId;
-    const conversations = await Conversation.find({ members: userId })
-      .populate({
-        path: 'members',
-        select: 'username email profile',
-        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
-      })
-      .populate('group', 'name')
-      .populate({
-        path: 'lastSender',
-        select: 'username profile',
-        populate: { path: 'profile', select: 'fullName' }
-      });
+    const conversations = await listConversationsForUser(req.params.userId);
     res.json(conversations);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    sendError(res, error, 500);
   }
 };
 
 export const getConversationMessages = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const messages = await Message.find({ conversation: conversationId })
-      .populate('sender', 'username')
-      .sort({ createdAt: 1 });
+    const messages = await getConversationMessagesService({
+      conversationId,
+      userId: req.query.userId,
+    });
     res.json(messages);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    sendError(res, error, 500);
   }
 };
 
@@ -40,28 +54,17 @@ export const sendMessage = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const { senderId, content, type } = req.body;
-    const convo = await Conversation.findById(conversationId);
-    if (!convo) return res.status(404).json({ message: 'Conversation not found' });
-    if (convo.blockedBy && convo.blockedBy.length > 0) {
-      return res.status(403).json({ message: 'Conversation is blocked' });
-    }
-    const msgType = type || 'text';
-    const msg = await Message.create({
-      conversation: conversationId,
-      sender: senderId,
+    const result = await sendConversationMessage({
+      conversationId,
+      senderId,
       content,
-      type: msgType,
+      type: type || 'text',
     });
-    await Conversation.findByIdAndUpdate(conversationId, {
-      lastMessage: content,
-      lastMessageAt: new Date(),
-      lastMessageType: msgType,
-      lastSender: senderId,
-    });
-    const populated = await msg.populate('sender', 'username');
-    res.status(201).json(populated);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+
+    emitMessageCreated(getIo(req), result);
+    res.status(201).json(result.message);
+  } catch (error) {
+    sendError(res, error);
   }
 };
 
@@ -72,70 +75,31 @@ export const sendAttachment = async (req, res) => {
     const file = req.file;
     if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
-    const convo = await Conversation.findById(conversationId);
-    if (!convo) return res.status(404).json({ message: 'Conversation not found' });
-    if (convo.blockedBy && convo.blockedBy.length > 0) {
-      return res.status(403).json({ message: 'Conversation is blocked' });
-    }
-
     const ext = path.extname(file.originalname).toLowerCase();
     const isImage = ['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext);
-    const url = `/uploads/${file.filename}`;
-    const msgType = isImage ? 'image' : 'file';
-    const msg = await Message.create({
-      conversation: conversationId,
-      sender: senderId,
-      content: url,
-      type: msgType,
+    const result = await sendConversationAttachment({
+      conversationId,
+      senderId,
+      content: `/uploads/${file.filename}`,
+      type: isImage ? 'image' : 'file',
       fileName: file.originalname,
     });
-    await Conversation.findByIdAndUpdate(conversationId, {
-      lastMessage: isImage ? 'Photo' : file.originalname,
-      lastMessageAt: new Date(),
-      lastMessageType: msgType,
-      lastSender: senderId,
-    });
-    const populated = await msg.populate('sender', 'username');
-    res.status(201).json(populated);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+
+    emitMessageCreated(getIo(req), result);
+    res.status(201).json(result.message);
+  } catch (error) {
+    sendError(res, error);
   }
 };
 
 export const createDmConversation = async (req, res) => {
   try {
     const { participants } = req.body;
-    if (!participants || participants.length !== 2) {
-      return res.status(400).json({ message: 'Exactly 2 participants required for DM' });
-    }
-    
-    const [userA, userB] = participants;
-    
-    // Check if conversation already exists
-    let convo = await Conversation.findOne({ 
-      type: 'dm', 
-      members: { $all: [userA, userB], $size: 2 } 
-    }).populate({
-      path: 'members',
-      select: 'username email profile',
-      populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
-    });
-    
-    if (!convo) {
-      convo = await Conversation.create({ 
-        type: 'dm', 
-        members: [userA, userB] 
-      });
-      convo = await convo.populate({
-        path: 'members',
-        select: 'username email profile',
-        populate: { path: 'profile', select: 'fullName' }
-      });
-    }
-    
-    res.status(201).json(convo);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+    const conversation = await createDmConversationForUsers(participants);
+    emitConversationUpdated(getIo(req), conversation);
+    res.status(201).json(conversation);
+  } catch (error) {
+    sendError(res, error);
   }
 };
 
@@ -143,23 +107,16 @@ export const blockConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const { userId } = req.body;
-    const convo = await Conversation.findById(conversationId);
-    if (!convo) return res.status(404).json({ message: 'Conversation not found' });
-    const isMember = convo.members.map(m => m.toString()).includes(userId);
-    if (!isMember) return res.status(403).json({ message: 'Not authorized' });
-    if (!convo.blockedBy) convo.blockedBy = [];
-    if (!convo.blockedBy.map(id => id.toString()).includes(userId)) {
-      convo.blockedBy.push(userId);
-      await convo.save();
-    }
-    const populated = await convo.populate({
-      path: 'members',
-      select: 'username email profile',
-      populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+    const conversation = await setConversationBlocked({
+      conversationId,
+      userId,
+      blocked: true,
     });
-    res.json(populated);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+
+    emitConversationUpdated(getIo(req), conversation);
+    res.json(conversation);
+  } catch (error) {
+    sendError(res, error);
   }
 };
 
@@ -167,287 +124,102 @@ export const unblockConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const { userId } = req.body;
-    const convo = await Conversation.findById(conversationId);
-    if (!convo) return res.status(404).json({ message: 'Conversation not found' });
-    const isMember = convo.members.map(m => m.toString()).includes(userId);
-    if (!isMember) return res.status(403).json({ message: 'Not authorized' });
-    convo.blockedBy = (convo.blockedBy || []).filter(id => id.toString() !== userId);
-    await convo.save();
-    const populated = await convo.populate({
-      path: 'members',
-      select: 'username email profile',
-      populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
+    const conversation = await setConversationBlocked({
+      conversationId,
+      userId,
+      blocked: false,
     });
-    res.json(populated);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+
+    emitConversationUpdated(getIo(req), conversation);
+    res.json(conversation);
+  } catch (error) {
+    sendError(res, error);
   }
 };
 
-// @desc Edit a message
-// @route PUT /api/chat/messages/:messageId
 export const editMessage = async (req, res) => {
   try {
     const { messageId } = req.params;
     const { content, senderId } = req.body;
+    const result = await editChatMessage({ messageId, senderId, content });
 
-    if (!content || !senderId) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Content and senderId are required' 
-      });
-    }
-
-    const message = await Message.findById(messageId);
-    if (!message) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Message not found' 
-      });
-    }
-
-    // Check if the user is the sender of the message
-    if (message.sender.toString() !== senderId) {
-      return res.status(403).json({ 
-        success: false,
-        message: 'You can only edit your own messages' 
-      });
-    }
-
-    // Update the message content
-    message.content = content;
-    await message.save();
-
-    // Populate sender data before sending response
-    await message.populate('sender', 'username');
-
+    emitMessageEdited(getIo(req), result);
     res.status(200).json({
       success: true,
-      data: message
+      data: result.message,
     });
   } catch (error) {
     console.error('Edit message error:', error);
-    res.status(500).json({ 
+    res.status(error?.status || 500).json({
       success: false,
-      message: 'Error editing message', 
-      error: error.message 
+      message: error?.message || 'Error editing message',
+      error: error?.message,
     });
   }
 };
 
-// @desc Delete a message
-// @route DELETE /api/chat/messages/:messageId
 export const deleteMessage = async (req, res) => {
   try {
     const { messageId } = req.params;
     const { senderId } = req.body;
+    const result = await deleteChatMessage({ messageId, senderId });
 
-    if (!senderId) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'SenderId is required' 
-      });
-    }
-
-    const message = await Message.findById(messageId);
-    if (!message) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Message not found' 
-      });
-    }
-
-    // Check if the user is the sender of the message
-    if (message.sender.toString() !== senderId) {
-      return res.status(403).json({ 
-        success: false,
-        message: 'You can only delete your own messages' 
-      });
-    }
-
-    await Message.findByIdAndDelete(messageId);
-
+    emitMessageDeleted(getIo(req), result);
     res.status(200).json({
       success: true,
-      message: 'Message deleted successfully'
+      message: 'Message deleted successfully',
     });
   } catch (error) {
     console.error('Delete message error:', error);
-    res.status(500).json({ 
+    res.status(error?.status || 500).json({
       success: false,
-      message: 'Error deleting message', 
-      error: error.message 
+      message: error?.message || 'Error deleting message',
+      error: error?.message,
     });
   }
 };
 
-// @desc Create or get group conversation
-// @route POST /api/chat/groups/:groupId/conversation
 export const createGroupConversation = async (req, res) => {
   try {
     const { groupId } = req.params;
     const { userId } = req.body;
+    const conversation = await createGroupConversationForUser({ groupId, userId });
 
-    // Check if group exists
-    const group = await Group.findById(groupId).populate('members', 'username');
-    if (!group) {
-      return res.status(404).json({ message: 'Group not found' });
-    }
-
-    // Check if user is a member of the group
-    const isMember = group.members.some(member => 
-      (member._id || member).toString() === userId
-    );
-    if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to access group chat' });
-    }
-
-    // Check if group conversation already exists
-    let conversation = await Conversation.findOne({ 
-      type: 'group', 
-      group: groupId 
-    }).populate({
-      path: 'members',
-      select: 'username email profile',
-      populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
-    });
-
-    if (!conversation) {
-      // Create new group conversation with all group members
-      conversation = await Conversation.create({ 
-        type: 'group', 
-        name: `${group.name} Chat`,
-        members: group.members.map(member => member._id || member),
-        group: groupId
-      });
-      
-      // Populate the conversation
-      conversation = await conversation.populate({
-        path: 'members',
-        select: 'username email profile',
-        populate: { path: 'profile', select: 'fullName isOnline lastSeen' }
-      });
-    }
-
+    emitConversationUpdated(getIo(req), conversation);
     res.status(200).json(conversation);
   } catch (error) {
     console.error('Create group conversation error:', error);
-    res.status(500).json({ 
-      message: 'Error creating group conversation', 
-      error: error.message 
-    });
+    sendError(res, error, 500);
   }
 };
 
-// @desc Get group conversation messages
-// @route GET /api/chat/groups/:groupId/messages
 export const getGroupMessages = async (req, res) => {
   try {
     const { groupId } = req.params;
     const { userId } = req.query;
-
-    // Check if group exists and user is a member
-    const group = await Group.findById(groupId);
-    if (!group) {
-      return res.status(404).json({ message: 'Group not found' });
-    }
-
-    const isMember = group.members.some(member => 
-      member.toString() === userId
-    );
-    if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to access group chat' });
-    }
-
-    // Find group conversation
-    const conversation = await Conversation.findOne({ 
-      type: 'group', 
-      group: groupId 
-    });
-
-    if (!conversation) {
-      return res.json([]); // No messages yet
-    }
-
-    // Get messages for this conversation
-    const messages = await Message.find({ conversation: conversation._id })
-      .populate('sender', 'username')
-      .sort({ createdAt: 1 });
-
+    const { messages } = await getGroupMessagesForUser({ groupId, userId });
     res.json(messages);
   } catch (error) {
     console.error('Get group messages error:', error);
-    res.status(500).json({ 
-      message: 'Error fetching group messages', 
-      error: error.message 
-    });
+    sendError(res, error, 500);
   }
 };
 
-// @desc Send message to group
-// @route POST /api/chat/groups/:groupId/messages
 export const sendGroupMessage = async (req, res) => {
   try {
     const { groupId } = req.params;
     const { senderId, content, type = 'text' } = req.body;
-
-    if (!content || !senderId) {
-      return res.status(400).json({ message: 'Content and senderId are required' });
-    }
-
-    // Check if group exists and user is a member
-    const group = await Group.findById(groupId);
-    if (!group) {
-      return res.status(404).json({ message: 'Group not found' });
-    }
-
-    const isMember = group.members.some(member => 
-      member.toString() === senderId
-    );
-    if (!isMember) {
-      return res.status(403).json({ message: 'You must be a member to send messages' });
-    }
-
-    // Find or create group conversation
-    let conversation = await Conversation.findOne({ 
-      type: 'group', 
-      group: groupId 
-    });
-
-    if (!conversation) {
-      // Create group conversation if it doesn't exist
-      conversation = await Conversation.create({ 
-        type: 'group', 
-        name: `${group.name} Chat`,
-        members: group.members,
-        group: groupId
-      });
-    }
-
-    // Create the message
-    const message = await Message.create({
-      conversation: conversation._id,
-      sender: senderId,
+    const result = await sendGroupMessageService({
+      groupId,
+      senderId,
       content,
-      type
+      type,
     });
 
-    // Update conversation's last message
-    await Conversation.findByIdAndUpdate(conversation._id, {
-      lastMessage: content,
-      lastMessageAt: new Date(),
-      lastSender: senderId
-    });
-
-    // Populate sender data before sending response
-    await message.populate('sender', 'username');
-
-    res.status(201).json(message);
+    emitMessageCreated(getIo(req), result);
+    res.status(201).json(result.message);
   } catch (error) {
     console.error('Send group message error:', error);
-    res.status(500).json({ 
-      message: 'Error sending message', 
-      error: error.message 
-    });
+    sendError(res, error, 500);
   }
 };

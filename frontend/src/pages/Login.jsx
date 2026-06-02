@@ -13,6 +13,7 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -20,7 +21,7 @@ export default function Login() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),

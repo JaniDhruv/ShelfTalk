@@ -1,5 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 
@@ -71,9 +72,15 @@ router.post('/login', async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    // Optionally, generate a JWT token here
+    const token = jwt.sign(
+      { userId: user._id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     res.json({
       user: { username: user.username, email: user.email, _id: user._id },
+      token,
       online: true,
       lastSeen: now,
     });

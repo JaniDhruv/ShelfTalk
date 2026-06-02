@@ -6,8 +6,6 @@ export const discoverUsers = async (req, res) => {
   try {
   const { search, location, genres, authors, languages, sortBy, limit } = req.query;
     
-    console.log('Discovery request params:', req.query);
-    
     // Build user filter for search
     const userFilter = {};
     if (search) {
@@ -133,7 +131,6 @@ export const discoverUsers = async (req, res) => {
       users = users.slice(0, parseInt(limit));
     }
     
-    console.log('Returning users:', users.length);
     res.json(users);
   } catch (err) {
     console.error('Discovery error:', err);

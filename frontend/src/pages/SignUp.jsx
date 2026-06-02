@@ -12,6 +12,7 @@ export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const navigate = useNavigate();
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
   const validateForm = () => {
     const errors = {};
@@ -47,7 +48,7 @@ export default function Signup() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/signup', {
+      const response = await fetch(`${API_BASE}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password })

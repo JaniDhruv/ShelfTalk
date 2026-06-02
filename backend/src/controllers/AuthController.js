@@ -51,9 +51,6 @@ export const loginUser = async (req, res) => {
       token,
       user: { id: user._id, username: user.username, email: user.email },
     });
-    // Example after login success
-localStorage.setItem('token', response.data.token);
-localStorage.setItem('userId', response.data.user.id);
 
   } catch (error) {
     res.status(500).json({ message: error.message });

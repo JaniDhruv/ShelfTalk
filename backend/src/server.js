@@ -15,8 +15,13 @@ import profileRoutes from './routes/ProfileRoutes.js';
 import chatRoutes from './routes/ChatRoutes.js';
 import discoveryRoutes from './routes/DiscoveryRoutes.js';
 import authRoutes from './routes/AuthRoutes.js';
+import bookRoutes from './routes/bookRoutes.js';
+import readingSessionRoutes from './routes/readingSessionRoutes.js';
+import groupLibraryRoutes from './routes/groupLibraryRoutes.js';
+import diaryRoutes from './routes/diaryRoutes.js';
 import Profile from './models/Profile.js';
 import { configureChatSocket } from './socket/chatSocket.js';
+
 
 dotenv.config();
 
@@ -52,6 +57,11 @@ app.use("/api/auth", authRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/discover', discoveryRoutes);
+app.use('/api/books', bookRoutes);
+app.use('/api/groups/:groupId/library', groupLibraryRoutes);
+app.use('/api/sessions', readingSessionRoutes);
+app.use('/api/diary', diaryRoutes);
+
 
 // MongoDB Connection
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/shelftalk';

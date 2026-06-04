@@ -274,6 +274,135 @@ export const configureChatSocket = (server) => {
         });
       }
     });
+
+    const readingRoomName = (groupId) => `reading_room:${groupId}`;
+
+    socket.on('join_reading_room', guarded(async (payload, ack) => {
+      const userId = resolveUserId(socket, payload.userId);
+      const snapshot = await handleSocketJoinRoom({
+        groupId: payload.groupId,
+        sessionId: payload.sessionId,
+        userId,
+        username: payload.username,
+      });
+
+      const roomGroupId = toId(snapshot?.groupId || payload.groupId || payload.sessionId);
+      const room = readingRoomName(roomGroupId);
+      socket.join(room);
+      socket.data.readingRoom = room;
+      ackOk(ack, { session: snapshot });
+
+      io.to(room).emit('reader_joined', {
+        sessionId: snapshot._id,
+        groupId: roomGroupId,
+        userId,
+        username: payload.username || socket.data.username || socket.data.userId,
+      });
+    }));
+
+    socket.on('leave_reading_room', ({ groupId, sessionId } = {}) => {
+      const room = socket.data.readingRoom || readingRoomName(toId(groupId || sessionId));
+      if (!room) return;
+
+      socket.leave(room);
+      socket.data.readingRoom = null;
+      io.to(room).emit('reader_left', {
+        groupId,
+        sessionId,
+        userId: socket.data.userId,
+      });
+    });
+
+    socket.on('scroll_update', guarded(async (payload, ack) => {
+      const userId = resolveUserId(socket, payload.userId);
+      const snapshot = await handleSocketPageUpdate({
+        sessionId: payload.sessionId,
+        userId,
+        currentPage: payload.currentPage,
+        username: payload.username,
+      });
+
+      const room = readingRoomName(toId(snapshot?.groupId || payload.groupId || payload.sessionId));
+      io.to(room).emit('page_updated', {
+        sessionId: snapshot._id,
+        groupId: toId(snapshot?.groupId),
+        userId,
+        username: payload.username || socket.data.username || socket.data.userId,
+        currentPage: payload.currentPage,
+        session: snapshot,
+      });
+
+      ackOk(ack, { session: snapshot });
+    }));
+
+    socket.on('annotation_added', guarded(async (payload, ack) => {
+      if (payload?.skipSave && payload.annotation) {
+        const room = readingRoomName(toId(payload.groupId || payload.sessionId));
+        io.to(room).emit('annotation_added', {
+          sessionId: payload.sessionId,
+          groupId: toId(payload.groupId),
+          annotation: payload.annotation,
+        });
+        ackOk(ack, { annotation: payload.annotation });
+        return;
+      }
+
+      const userId = resolveUserId(socket, payload.userId);
+      const snapshot = await handleSocketReaction({
+        sessionId: payload.sessionId,
+        userId,
+        page: payload.page,
+        emoji: payload.emoji,
+        note: payload.note,
+        username: payload.username,
+      });
+
+      const room = readingRoomName(toId(snapshot?.groupId || payload.groupId || payload.sessionId));
+      const annotation = snapshot.annotations[snapshot.annotations.length - 1];
+      io.to(room).emit('annotation_added', {
+        sessionId: snapshot._id,
+        groupId: toId(snapshot?.groupId),
+        annotation,
+      });
+
+      ackOk(ack, { session: snapshot, annotation });
+    }));
+
+
+    socket.on('reader_completed', guarded(async (payload, ack) => {
+      const userId = resolveUserId(socket, payload.userId);
+      const snapshot = await handleSocketReaderCompleted({
+        sessionId: payload.sessionId,
+        userId,
+        currentPage: payload.currentPage,
+        username: payload.username,
+      });
+
+      const room = readingRoomName(toId(snapshot?.groupId || payload.groupId || payload.sessionId));
+      io.to(room).emit('reader_finished', {
+        sessionId: snapshot._id,
+        groupId: toId(snapshot?.groupId),
+        userId,
+        username: payload.username || socket.data.username || socket.data.userId,
+      });
+
+      ackOk(ack, { session: snapshot });
+    }));
+
+    socket.on('check_all_completed', guarded(async (payload, ack) => {
+      const snapshot = await handleSocketCheckCompletion({ sessionId: payload.sessionId });
+      const room = readingRoomName(toId(snapshot?.groupId || payload.groupId || payload.sessionId));
+
+      if (snapshot?.status === 'completed') {
+        io.to(room).emit('session_completed', {
+          sessionId: snapshot._id,
+          groupId: toId(snapshot?.groupId),
+          session: snapshot,
+        });
+      }
+
+      ackOk(ack, { session: snapshot });
+    }));
   });
 
   return io;

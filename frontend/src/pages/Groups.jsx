@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GuestGate from '../components/GuestGate';
 import './Discover.css';
@@ -43,6 +43,7 @@ const formatPresenceLabel = (presence) => {
 
 export default function Groups() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(false);

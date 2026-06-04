@@ -1,0 +1,462 @@
+/* 
+  Book Theme Overrides for Posts 
+  Loaded after PostsPage.css
+*/
+
+.posts-feed {
+  gap: 1.5rem !important;
+}
+
+.post-card, .create-post-card {
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto 1.5rem auto;
+  background: #fdfaf6;
+  border: 1px solid #e8dcc8;
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.06),
+    0 8px 16px rgba(0,0,0,0.04),
+    inset 0 1px 0 rgba(255,255,255,0.8);
+  border-radius: 2px;
+  color: #2f4f4f;
+  font-family: 'Crimson Text', serif;
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* Remove Glassmorphism */
+.post-card::before, .create-post-card::before {
+  display: none !important;
+}
+
+/* Text adjustments */
+.post-content p {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 1.15rem;
+  line-height: 1.8;
+  color: #36454f;
+}
+
+/* =========================================
+   2. Torn Paper Divider (Hidden)
+   ========================================= */
+.torn-paper-divider {
+  display: none !important;
+}
+
+/* =========================================
+   3. Notebook Create Post
+   ========================================= */
+.create-post-card {
+  background: #fdfaf6;
+  background-image: 
+    linear-gradient(transparent 39px, #add8e6 40px); /* Blue lines */
+  background-size: 100% 40px;
+  background-position: 0 10px; /* Align lines */
+  padding-left: 60px; /* Space for red margin */
+  position: relative;
+  border-radius: 2px;
+  box-shadow: 2px 4px 15px rgba(0,0,0,0.1);
+  min-height: 200px;
+}
+
+/* Red Margin Line */
+.create-post-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 45px;
+  width: 2px;
+  background: rgba(226, 125, 96, 0.7); /* Faint red */
+  z-index: 1;
+}
+
+.create-post-header {
+  padding-top: 15px;
+  margin-bottom: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.create-post-card .post-textarea {
+  background: transparent;
+  border: none;
+  font-family: 'Crimson Text', serif;
+  font-size: 1.25rem;
+  line-height: 40px; /* MUST MATCH background-size of lines */
+  color: #2c3e50;
+  padding: 0;
+  margin-top: 5px;
+  resize: none;
+  position: relative;
+  z-index: 2;
+}
+
+.create-post-card .post-textarea:focus {
+  background: transparent;
+  box-shadow: none;
+}
+
+.create-post-footer {
+  position: relative;
+  z-index: 2;
+  border-top: none;
+  padding-top: 10px;
+}
+
+/* Notebook Pencil Button */
+.btn-post {
+  background: transparent;
+  color: #2f4f4f;
+  border: 2px solid #2f4f4f;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.btn-post:hover:not(:disabled) {
+  background: #2f4f4f;
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+/* =========================================
+   4. Dog-Eared Page & Lift Animation
+   ========================================= */
+.post-card {
+  background: #fdfaf6; /* overriding any previous gradients */
+}
+
+/* User's exact dog ear snippet */
+.post-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(
+    225deg,
+    #e8dcc8 45%,
+    #d4c4a8 45%,
+    #c8b89a 50%,
+    #fdfaf6 50%
+  );
+  box-shadow: -2px -2px 4px rgba(0,0,0,0.1);
+  pointer-events: none;
+}
+
+.post-card:hover {
+  transform: translateY(-4px) rotate(-0.5deg);
+  box-shadow: 
+    15px 20px 40px rgba(0,0,0,0.12),
+    -5px 20px 40px rgba(0,0,0,0.05);
+}
+
+.post-card-dog-ear {
+  display: none !important; /* Hide old dog ear element */
+}
+
+
+/* =========================================
+   5. Author Byline (Book Style)
+   ========================================= */
+.post-book-byline {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  padding-right: 50px; /* avoid dog-ear */
+  padding-left: 20px;
+  padding-bottom: 1rem;
+  border-top: 1px solid rgba(139, 69, 19, 0.1);
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  align-items: center;
+  font-family: 'Crimson Text', serif;
+  font-style: italic;
+  color: #708090;
+  font-size: 1.05rem;
+}
+
+/* Hide standard top header items since we moved them to bottom */
+.post-card .post-header {
+  padding: 1rem 2rem 0;
+  margin-bottom: 0;
+}
+.post-card .post-author-info .post-time-stamp,
+.post-card .post-author-avatar,
+.post-card .username-trigger,
+.post-card .presence-pill {
+  display: none; /* We'll use the byline instead for author name */
+}
+
+/* But we still need the post actions menu in the header */
+.post-card .post-header {
+  justify-content: flex-start;
+  height: auto;
+  min-height: 20px;
+}
+
+/* Fix the Action Buttons */
+.post-card .post-actions {
+  border-top: none !important;
+  background: transparent !important;
+  padding: 1.5rem 0 0 0 !important;
+  justify-content: center !important;
+  gap: 2rem !important;
+}
+
+.post-card .action-btn {
+  background: transparent !important;
+  border: 1px solid rgba(139, 69, 19, 0.2) !important;
+  color: #5c4033 !important;
+  border-radius: 4px !important;
+  font-family: 'Crimson Text', serif;
+  box-shadow: none !important;
+  padding: 6px 12px;
+}
+.post-card .action-btn:hover {
+  background: rgba(139, 69, 19, 0.05) !important;
+}
+
+
+/* =========================================
+   6. Ink Stamp Reactions
+   ========================================= */
+.ink-stamp-btn {
+  font-family: 'Crimson Text', serif !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 2px !important;
+  text-transform: uppercase !important;
+  color: #8b3a3a !important;
+  border: 2px dashed #8b3a3a !important;
+  border-radius: 3px !important;
+  padding: 6px 16px !important;
+  background: transparent !important;
+  cursor: pointer;
+  transition: all 0.15s ease !important;
+  box-shadow: none !important;
+}
+
+.ink-stamp-btn.stamped {
+  border-style: solid !important;
+  background: rgba(139, 58, 58, 0.06) !important;
+  transform: rotate(-2deg); /* slight tilt like a real stamp */
+  opacity: 1 !important;
+}
+
+.ink-stamp-btn:active {
+  transform: scale(0.92) rotate(-2deg); /* stamping motion */
+}
+
+/* =========================================
+   7. Ribbon Bookmark
+   ========================================= */
+.bookmark-ribbon {
+  position: absolute;
+  top: -10px;
+  right: 25px;
+  width: 24px;
+  height: 40px;
+  background: #c93a3a;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+  z-index: 10;
+  transition: top 0.3s ease;
+  cursor: pointer;
+}
+
+/* Cutout for the bottom of the ribbon */
+.bookmark-ribbon::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  border-bottom: 10px solid #fdfaf6; /* Matches page color to create cutout */
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  transition: border-bottom-color 0.3s ease;
+}
+
+.post-card:hover .bookmark-ribbon::after {
+  border-bottom-color: #fcf6eb; /* Match hover gradient roughly */
+}
+
+.bookmark-ribbon.saved {
+  height: 60px; /* Slides down further when saved */
+}
+
+/* Hide standard bookmark text */
+.bookmark-btn-icon {
+  position: relative;
+  z-index: 11;
+  color: white;
+  text-align: center;
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+
+/* =========================================
+   8. Wax Seal Tags (For Groups)
+   ========================================= */
+.wax-seal-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 30% 30%, #a41c1c, #630808);
+  color: #fdfaf6;
+  font-family: 'Playfair Display', serif;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 8px 12px;
+  border-radius: 50%;
+  box-shadow: 
+    inset 0 0 4px rgba(255,255,255,0.2),
+    inset 0 0 10px rgba(0,0,0,0.5),
+    2px 2px 5px rgba(0,0,0,0.3);
+  border: 1px solid #4a0404;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: absolute;
+  top: 15px;
+  left: -20px;
+  transform: rotate(-10deg);
+  z-index: 5;
+}
+
+.wax-seal-tag::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  border: 1px dotted rgba(255,255,255,0.3);
+  border-radius: 50%;
+}
+
+/* =========================================
+   9. Comments & Badges Final Polish
+   ========================================= */
+
+.your-post-badge {
+  background: #6b3a2a !important;
+  color: #fdfaf6 !important;
+  font-family: 'Crimson Text', serif !important;
+  font-style: italic !important;
+  font-size: 0.8rem !important;
+  padding: 3px 12px !important;
+  border-radius: 2px !important;
+}
+
+/* Comments Section Pill Removal & Styling */
+.comment-action-btn:not(.btn-like) {
+  border-radius: 2px !important;
+  background: transparent !important;
+  border: 1px solid rgba(139, 69, 19, 0.2) !important;
+  font-family: 'Crimson Text', serif !important;
+}
+.comment-action-btn.btn-like {
+  border-radius: 2px !important;
+  background: transparent !important;
+}
+
+/* Timestamp Style */
+.comment-time {
+  background: transparent !important;
+  color: #8c7e6c !important;
+  font-style: italic !important;
+  font-family: 'Crimson Text', serif !important;
+  font-size: 0.9rem !important;
+  padding: 0 !important;
+}
+
+/* Theme Scrollbar for Comments (and general) */
+* {
+  scrollbar-width: thin !important;
+  scrollbar-color: #c8b89a #fdfaf6 !important;
+}
+
+::-webkit-scrollbar { width: 6px !important; }
+::-webkit-scrollbar-track { background: #fdfaf6 !important; }
+::-webkit-scrollbar-thumb { background: #c8b89a !important; border-radius: 3px !important; }
+
+.comments-list::-webkit-scrollbar {
+  width: 6px !important;
+}
+.comments-list::-webkit-scrollbar-track {
+  background: #fdfaf6 !important;
+}
+.comments-list::-webkit-scrollbar-thumb {
+  background: #c8b89a !important;
+  border-radius: 3px !important;
+}
+
+/* Comment Box Fixes */
+.comment-textarea {
+  background: #fdfaf6 !important;
+  border: 1px solid #d4c4a8 !important;
+  font-family: 'Crimson Text', serif !important;
+  font-size: 1rem !important;
+}
+
+.btn-comment-post {
+  background: #6b3a2a !important;
+  color: #fdfaf6 !important;
+  font-family: 'Crimson Text', serif !important;
+  border: none !important;
+  padding: 6px 18px !important;
+  border-radius: 2px !important;
+}
+
+/* =========================================
+   10. Author Profile Link & Group Tags
+   ========================================= */
+
+.post-author-link {
+  color: #6b3a2a;
+  text-decoration: none;
+  font-style: italic;
+}
+.post-author-link:hover {
+  text-decoration: underline;
+}
+
+.post-group-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 24px 12px 24px; /* Align with content padding */
+  padding: 6px 12px;
+  background: rgba(107, 58, 42, 0.08);
+  border-left: 3px solid #8b3a3a;
+  font-family: 'Crimson Text', serif;
+  font-size: 0.95rem;
+  color: #6b3a2a;
+}
+
+.post-group-join-btn {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #8b3a3a;
+  border: 1px solid #8b3a3a;
+  background: transparent;
+  padding: 2px 10px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: 'Crimson Text', serif;
+  letter-spacing: 1px;
+}
+.post-group-join-btn:hover {
+  background: rgba(139, 58, 58, 0.1);
+}
+
+.comment-stamp-btn {
+  font-size: 0.7rem !important;
+  padding: 2px 8px !important;
+  letter-spacing: 1.5px !important;
+}

@@ -10,7 +10,12 @@ import GroupPage from './pages/GroupPage';
 import Profile from './pages/Profile';
 import Chat from './pages/Chat';
 import Discover from './pages/Discover';
+import ReadingRoom from './pages/ReadingRoom';
+import PdfReadingRoom from './pages/PdfReadingRoom';
+import SoloPdfReader from './pages/SoloPdfReader';
+
 import NavBar from './components/NavBar';
+import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './components/ToastSystem';
 
@@ -30,6 +35,10 @@ function AppContent() {
         <Route path="/posts/:id" element={<PostDetail />} />
         <Route path="/groups" element={<Groups />} />
         <Route path="/groups/:id" element={<GroupPage />} />
+        <Route path="/groups/:groupId/reading-room/:sessionId" element={<ProtectedRoute><PdfReadingRoom /></ProtectedRoute>} />
+        <Route path="/groups/:groupId/library/:bookId/read" element={<ProtectedRoute><SoloPdfReader /></ProtectedRoute>} />
+        <Route path="/groups/:groupId/reading-room" element={<ProtectedRoute><ReadingRoom /></ProtectedRoute>} />
+
         {/* Social Features */}
         <Route path="/profile/:userId?" element={<Profile />} />
         <Route path="/chat" element={<Chat />} />

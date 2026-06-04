@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import DiaryTab from '../components/diary/DiaryTab';
 import './Profile.css';
 
 export default function Profile() {
@@ -141,6 +142,7 @@ export default function Profile() {
     { key: 'favorites', label: 'Favorites', icon: 'fas fa-star' },
     { key: 'activity', label: 'Activity', icon: 'fas fa-stream' },
     { key: 'clubs', label: 'Clubs', icon: 'fas fa-users' },
+    { key: 'diary', label: 'Diary', icon: 'fas fa-book-open' },
   ];
 
   const favoriteGenres = Array.isArray(profileData?.favoriteGenres)
@@ -857,6 +859,10 @@ export default function Profile() {
                   )}
                 </section>
               </div>
+            )}
+            
+            {activeTab === 'diary' && (
+              <DiaryTab userId={profileData.id} user={profileData} />
             )}
           </div>
         </div>

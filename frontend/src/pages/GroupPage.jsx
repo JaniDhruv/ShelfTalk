@@ -102,7 +102,15 @@ export default function GroupPage() {
   const [posting, setPosting] = useState(false);
   const [commentsByPost, setCommentsByPost] = useState({});
   const [showComments, setShowComments] = useState({});
-  const [activeTab, setActiveTab] = useState('forum'); // forum, chat, members
+  const [activeTab, setActiveTab] = useState('forum'); // forum, chat, library, members
+  
+  // Library states
+  const [libraryBooks, setLibraryBooks] = useState([]);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [uploadingBook, setUploadingBook] = useState(false);
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [activeSession, setActiveSession] = useState(null);
+  const [startingSession, setStartingSession] = useState(null); // bookId being started
   
   // Group chat states
   const [chatMessages, setChatMessages] = useState([]);
@@ -193,6 +201,105 @@ export default function GroupPage() {
     if (isGuest) return;
     fetchGroup();
   }, [fetchGroup, isGuest]);
+
+  // Library functions
+  const fetchLibrary = useCallback(async () => {
+    if (!id || !userId) return;
+    setLibraryLoading(true);
+    try {
+      const [booksRes, sessionRes] = await Promise.all([
+        fetch(`${API_BASE}/api/groups/${id}/library?userId=${userId}`),
+        fetch(`${API_BASE}/api/sessions/group/${id}`),
+      ]);
+      if (booksRes.ok) {
+        const data = await booksRes.json();
+        setLibraryBooks(data.books || []);
+      }
+      if (sessionRes.ok) {
+        const data = await sessionRes.json();
+        setActiveSession(data.session || null);
+      }
+    } catch (e) {
+      console.error('Library fetch error:', e);
+    } finally {
+      setLibraryLoading(false);
+    }
+  }, [id, userId, API_BASE]);
+
+  const handleUploadPdf = async (e) => {
+    e.preventDefault();
+    const fileInput = e.target.querySelector('input[type="file"]');
+    const file = fileInput?.files?.[0];
+    if (!file || !userId) return;
+
+    setUploadingBook(true);
+    try {
+      const formData = new FormData();
+      formData.append('pdf', file);
+      formData.append('userId', userId);
+      formData.append('title', uploadTitle.trim() || file.name.replace(/\.pdf$/i, ''));
+
+      const res = await fetch(`${API_BASE}/api/groups/${id}/library`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Upload failed');
+
+      setUploadTitle('');
+      fileInput.value = '';
+      await fetchLibrary();
+    } catch (err) {
+      setError(err.message || 'Upload failed');
+    } finally {
+      setUploadingBook(false);
+    }
+  };
+
+  const handleDeleteBook = async (bookId) => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/groups/${id}/library/${bookId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || 'Delete failed');
+      }
+      await fetchLibrary();
+    } catch (err) {
+      setError(err.message || 'Delete failed');
+    }
+  };
+
+  const handleStartSession = async (bookId) => {
+    if (!userId) return;
+    setStartingSession(bookId);
+    try {
+      const res = await fetch(`${API_BASE}/api/sessions/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupId: id, userId, bookId, username: user?.username }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to start session');
+
+      setActiveSession(data.session);
+      navigate(`/groups/${id}/reading-room/${data.session._id}`);
+    } catch (err) {
+      setError(err.message || 'Failed to start session');
+    } finally {
+      setStartingSession(null);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'library' && group && isMember) {
+      fetchLibrary();
+    }
+  }, [activeTab, group?._id, isMember, fetchLibrary]);
 
   // Load user conversations for Share modal (parity with PostsPage)
   useEffect(() => {
@@ -1187,6 +1294,7 @@ export default function GroupPage() {
             {[
               { id: 'forum', label: 'Online Forum', icon: 'fas fa-comments' },
               { id: 'chat', label: 'Group Chat', icon: 'fas fa-comment-dots' },
+              { id: 'library', label: 'Library', icon: 'fas fa-book' },
               { id: 'members', label: 'Members', icon: 'fas fa-users' }
             ].map(tab => (
               <button
@@ -2245,6 +2353,330 @@ export default function GroupPage() {
                   </div>
                 </>
               )}
+            </div>
+          )}
+
+          {/* Library Tab */}
+          {activeTab === 'library' && (
+            <div>
+              {/* Active Session Banner */}
+              {activeSession && activeSession.status === 'active' && (
+                <div style={{
+                  background: 'linear-gradient(135deg, #722F37, #B8860B)',
+                  borderRadius: '16px',
+                  padding: '20px 24px',
+                  marginBottom: '20px',
+                  color: '#FFFEF7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  boxShadow: '0 8px 24px rgba(114, 47, 55, 0.25)',
+                  animation: 'pdf-fade-in 0.4s ease'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.85, marginBottom: 4, fontWeight: 700 }}>
+                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#87a96b', marginRight: 8, animation: 'pdf-emoji-bounce 2s ease infinite' }} />
+                      Live Reading Session
+                    </div>
+                    <div style={{ fontSize: '20px', fontWeight: 800 }}>
+                      📖 {activeSession.title || 'Untitled'}
+                    </div>
+                    <div style={{ fontSize: '13px', opacity: 0.8, marginTop: 4 }}>
+                      {activeSession.participants?.length || 0} reader{(activeSession.participants?.length || 0) !== 1 ? 's' : ''} • Page {activeSession.participants?.find(p => getEntityId(p.userId) === userId)?.currentPage || 1} / {activeSession.pageCount || '—'}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate(`/groups/${id}/reading-room/${activeSession._id}`)}
+                    style={{
+                      background: 'rgba(255,255,255,0.2)',
+                      border: '2px solid rgba(255,255,255,0.4)',
+                      color: '#FFFEF7',
+                      borderRadius: '25px',
+                      padding: '12px 24px',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '14px',
+                      transition: 'all 0.3s ease',
+                      backdropFilter: 'blur(8px)'
+                    }}
+                    onMouseOver={(e) => { e.target.style.background = 'rgba(255,255,255,0.35)'; }}
+                    onMouseOut={(e) => { e.target.style.background = 'rgba(255,255,255,0.2)'; }}
+                  >
+                    <i className="fas fa-book-open-reader" style={{ marginRight: 8 }} />
+                    Join Reading Room →
+                  </button>
+                </div>
+              )}
+
+              {/* Upload Section (Owner/Mod only) */}
+              {canModerate && (
+                <div style={{
+                  background: 'white',
+                  borderRadius: '16px',
+                  padding: '24px',
+                  marginBottom: '20px',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                  border: '2px solid rgba(184, 134, 11, 0.25)',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{ height: 6, borderRadius: 8, background: 'linear-gradient(90deg, #B8860B, #DAA520)', marginBottom: 16 }} />
+                  <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700, color: '#722F37', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <i className="fas fa-cloud-arrow-up" style={{ color: '#B8860B' }} />
+                    Upload Book PDF
+                  </h3>
+                  <form onSubmit={handleUploadPdf} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 200px' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: 6 }}>Book Title (optional)</label>
+                      <input
+                        type="text"
+                        value={uploadTitle}
+                        onChange={(e) => setUploadTitle(e.target.value)}
+                        placeholder="Auto-detected from filename"
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: '10px',
+                          border: '1px solid #e5e7eb',
+                          fontSize: '14px',
+                          transition: 'border-color 0.2s',
+                        }}
+                        onFocus={(e) => { e.target.style.borderColor = '#B8860B'; e.target.style.boxShadow = '0 0 0 3px rgba(184,134,11,0.12)'; }}
+                        onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = 'none'; }}
+                      />
+                    </div>
+                    <div style={{ flex: '1 1 200px' }}>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: 6 }}>PDF File</label>
+                      <input
+                        type="file"
+                        accept=".pdf,application/pdf"
+                        required
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '10px',
+                          border: '1px solid #e5e7eb',
+                          fontSize: '13px',
+                          background: '#f9fafb',
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={uploadingBook}
+                      style={{
+                        background: uploadingBook ? '#cbd5e1' : 'linear-gradient(135deg, #722F37, #B8860B)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '25px',
+                        padding: '12px 24px',
+                        cursor: uploadingBook ? 'not-allowed' : 'pointer',
+                        fontWeight: 600,
+                        fontSize: '14px',
+                        boxShadow: uploadingBook ? 'none' : '0 4px 12px rgba(184,134,11,0.3)',
+                        transition: 'all 0.3s ease',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      <i className={`fas fa-${uploadingBook ? 'spinner fa-spin' : 'upload'}`} style={{ marginRight: 8 }} />
+                      {uploadingBook ? 'Uploading...' : 'Upload PDF'}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Books Grid */}
+              <div style={{
+                background: 'white',
+                borderRadius: '16px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                border: '2px solid rgba(184, 134, 11, 0.25)',
+                overflow: 'hidden'
+              }}>
+                <div style={{ height: 6, background: 'linear-gradient(90deg, #8B3A3A, #B8860B, #87A96B)' }} />
+                <div style={{
+                  padding: '20px 24px',
+                  background: 'linear-gradient(135deg, rgba(184,134,11,0.05), rgba(114,47,55,0.05))',
+                  borderBottom: '1px solid rgba(184,134,11,0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <i className="fas fa-book" style={{ color: '#B8860B' }} />
+                    Group Library
+                  </h3>
+                  <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 600 }}>
+                    {libraryBooks.length} book{libraryBooks.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                <div style={{ padding: '20px 24px' }}>
+                  {libraryLoading ? (
+                    <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
+                      <i className="fas fa-spinner fa-spin" style={{ fontSize: 24, marginBottom: 12, display: 'block' }} />
+                      Loading library...
+                    </div>
+                  ) : libraryBooks.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                      <i className="fas fa-book-open" style={{ fontSize: 40, color: '#d1d5db', marginBottom: 12, display: 'block' }} />
+                      <div style={{ color: '#64748b', fontSize: 15, fontWeight: 500 }}>No books in the library yet</div>
+                      {canModerate && (
+                        <div style={{ color: '#94a3b8', fontSize: 13, marginTop: 8 }}>Upload a PDF above to get started</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+                      {libraryBooks.map((book) => {
+                        const isActiveBook = activeSession?.bookId?._id === book._id || getEntityId(activeSession?.bookId) === book._id;
+                        const fileSizeKb = book.fileSize ? (book.fileSize / 1024).toFixed(0) : '—';
+                        const fileSizeLabel = book.fileSize > 1048576
+                          ? `${(book.fileSize / 1048576).toFixed(1)} MB`
+                          : `${fileSizeKb} KB`;
+
+                        return (
+                          <div key={book._id} style={{
+                            border: isActiveBook ? '2px solid #B8860B' : '1px solid rgba(184,134,11,0.2)',
+                            borderRadius: '14px',
+                            overflow: 'hidden',
+                            background: isActiveBook ? 'linear-gradient(135deg, rgba(184,134,11,0.06), rgba(255,254,247,0.98))' : '#FFFEF7',
+                            transition: 'all 0.3s ease',
+                            position: 'relative',
+                          }}>
+                            {isActiveBook && (
+                              <div style={{
+                                background: 'linear-gradient(90deg, #B8860B, #DAA520)',
+                                color: 'white',
+                                fontSize: '11px',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.08em',
+                                padding: '4px 12px',
+                                textAlign: 'center'
+                              }}>
+                                📖 Active Session
+                              </div>
+                            )}
+
+                            {/* Book cover placeholder */}
+                            <div style={{
+                              height: 100,
+                              background: 'linear-gradient(135deg, rgba(114,47,55,0.12), rgba(184,134,11,0.12))',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '2.5rem',
+                              color: 'rgba(114,47,55,0.3)',
+                            }}>
+                              📄
+                            </div>
+
+                            <div style={{ padding: '14px 16px' }}>
+                              <div style={{ fontWeight: 700, fontSize: '15px', color: '#111827', marginBottom: 6, lineHeight: 1.3 }}>
+                                {book.title || book.originalName || 'Untitled'}
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                                <span style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 99 }}>
+                                  {fileSizeLabel}
+                                </span>
+                                {book.pageCount > 0 && (
+                                  <span style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 99 }}>
+                                    {book.pageCount} pages
+                                  </span>
+                                )}
+                                <span style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 99 }}>
+                                  {new Date(book.uploadedAt || book.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              </div>
+
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                {canModerate && !activeSession && (
+                                  <button
+                                    onClick={() => handleStartSession(book._id)}
+                                    disabled={startingSession === book._id}
+                                    style={{
+                                      flex: 1,
+                                      background: startingSession === book._id ? '#cbd5e1' : 'linear-gradient(135deg, #B8860B, #DAA520)',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '10px',
+                                      padding: '8px 12px',
+                                      cursor: startingSession === book._id ? 'wait' : 'pointer',
+                                      fontWeight: 600,
+                                      fontSize: '12px',
+                                      transition: 'all 0.2s ease'
+                                    }}
+                                  >
+                                    <i className={`fas fa-${startingSession === book._id ? 'spinner fa-spin' : 'play'}`} style={{ marginRight: 6 }} />
+                                    {startingSession === book._id ? 'Starting...' : 'Start Session'}
+                                  </button>
+                                )}
+                                {isActiveBook && (
+                                  <button
+                                    onClick={() => navigate(`/groups/${id}/reading-room/${activeSession._id}`)}
+                                    style={{
+                                      flex: 1,
+                                      background: 'linear-gradient(135deg, #722F37, #B8860B)',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '10px',
+                                      padding: '8px 12px',
+                                      cursor: 'pointer',
+                                      fontWeight: 600,
+                                      fontSize: '12px',
+                                    }}
+                                  >
+                                    <i className="fas fa-book-open-reader" style={{ marginRight: 6 }} />
+                                    Join Session
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => navigate(`/groups/${id}/library/${book._id}/read`)}
+                                  style={{
+                                    flex: 1,
+                                    background: 'linear-gradient(135deg, #475569, #1e293b)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    padding: '8px 12px',
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                    fontSize: '12px',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                >
+                                  <i className="fas fa-book-reader" style={{ marginRight: 6 }} />
+                                  Read Solo
+                                </button>
+                                {canModerate && (
+                                  <button
+                                    onClick={() => handleDeleteBook(book._id)}
+                                    style={{
+                                      background: 'rgba(139,58,58,0.08)',
+                                      color: '#8B3A3A',
+                                      border: 'none',
+                                      borderRadius: '10px',
+                                      padding: '8px 12px',
+                                      cursor: 'pointer',
+                                      fontSize: '12px',
+                                      fontWeight: 600,
+                                      transition: 'all 0.2s ease'
+                                    }}
+                                    title="Delete book"
+                                  >
+                                    <i className="fas fa-trash" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

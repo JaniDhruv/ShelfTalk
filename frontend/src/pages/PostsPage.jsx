@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import './PostsPage.css';
 import './Discover.css';
+import './BookThemePosts.css';
 import ConfirmationModal from '../components/ConfirmationModal';
 
 const buildPresence = (user) => {
@@ -47,6 +48,7 @@ export default function PostsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
+  const [savedPosts, setSavedPosts] = useState(new Set());
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [postsLoading, setPostsLoading] = useState(true);
@@ -370,6 +372,22 @@ export default function PostsPage() {
     }
   };
 
+  const handleSavePost = (postId) => {
+    if (isGuest) {
+      requireAuth('Sign in to bookmark posts');
+      return;
+    }
+    setSavedPosts(prev => {
+      const next = new Set(prev);
+      if (next.has(postId)) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+      }
+      return next;
+    });
+  };
+
   const handleToggleComments = async (postId) => {
     const isShowing = showComments[postId];
     setShowComments(prev => ({ ...prev, [postId]: !isShowing }));
@@ -643,6 +661,7 @@ export default function PostsPage() {
           <div className="comment-actions-bar">
             {(() => {
               const uid = user?._id || user?.id;
+              const isOwnComment = uid && ((comment.author?._id || comment.author) === uid);
               const isLiked = (comment.likes || []).some(l => {
                 const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
                 return id === uid;
@@ -651,13 +670,14 @@ export default function PostsPage() {
                 <>
                   <button
                     type="button"
-                    className={`comment-action-btn btn-like btn-like-sm ${isLiked ? 'liked' : ''} ${isGuest ? 'guest-locked' : ''}`}
+                    className={`ink-stamp-btn comment-stamp-btn ${isLiked ? 'stamped' : ''} ${isGuest ? 'guest-locked' : ''}`}
                     onClick={() => handleLikeComment(comment._id, postId)}
+                    disabled={isOwnComment}
+                    style={{ opacity: isOwnComment ? 0.5 : 1, cursor: isOwnComment ? 'not-allowed' : 'pointer' }}
                     aria-disabled={isGuest}
-                    title={isGuest ? 'Sign in to react to comments' : undefined}
+                    title={isGuest ? 'Sign in to stamp comments' : (isOwnComment ? 'Cannot stamp your own comment' : undefined)}
                   >
-                    <i className={`${isLiked ? 'fas fa-heart' : 'far fa-heart'}`}></i>
-                    {comment.likes?.length > 0 && <span>{comment.likes.length}</span>}
+                    {isLiked ? 'STAMPED' : 'STAMP'} {comment.likes?.length > 0 ? `(${comment.likes.length})` : '(0)'}
                   </button>
 
                   <button
@@ -913,52 +933,19 @@ export default function PostsPage() {
                 {filteredPosts.map(post => {
                   const presence = buildPresence(post.author);
                   const presenceLabel = formatPresenceLabel(presence);
+                  const isSaved = savedPosts.has(post._id);
                   return (
-                  <article key={post._id} className="post-card">
+                  <React.Fragment key={post._id}>
+                  <article className="post-card">
+                    <div 
+                      className={`bookmark-ribbon ${isSaved ? 'saved' : ''}`} 
+                      onClick={() => handleSavePost(post._id)}
+                      title={isSaved ? "Remove Bookmark" : "Bookmark Post"}
+                    >
+                      {isSaved && <i className="fas fa-bookmark bookmark-btn-icon"></i>}
+                    </div>
+                    <div className="post-card-dog-ear"></div>
                     <div className="post-header">
-                      <div className="post-author">
-                        <div className="post-author-avatar">{post.author?.username ? post.author.username[0].toUpperCase() : 'U'}</div>
-                        <div
-                          className="post-author-info user-popover-wrapper"
-                          ref={openUserMenu === post._id ? userMenuRef : null}
-                          onMouseLeave={() => setOpenUserMenu(prev => prev === post._id ? null : prev)}
-                        >
-                          <button
-                            type="button"
-                            className="username-trigger"
-                            onClick={() => setOpenUserMenu(prev => prev === post._id ? null : post._id)}
-                            onMouseEnter={() => setOpenUserMenu(post._id)}
-                          >
-                            {post.author?.username || 'Unknown User'}
-                          </button>
-                          <p className="post-time-stamp">{new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
-                          <div
-                            className={`presence-pill ${presence.isOnline ? 'online' : 'offline'}`}
-                            title={presence.isOnline ? 'User is online' : (presence.lastSeen ? `Last seen ${presence.lastSeen.toLocaleString()}` : 'User is offline')}
-                          >
-                            <span className={`status-dot ${presence.isOnline ? 'online' : 'offline'}`}></span>
-                            <span>{presenceLabel}</span>
-                          </div>
-                          {openUserMenu === post._id && (
-                            <div className="user-popover" role="menu">
-                              <button
-                                className="user-popover-item"
-                                onClick={() => handleUsernameAction(post.author?._id, 'profile')}
-                              >
-                                <i className="fas fa-user-circle"></i> View Profile
-                              </button>
-                              {user && post.author?._id !== user._id && (
-                                <button
-                                  className="user-popover-item"
-                                  onClick={() => handleUsernameAction(post.author?._id, 'message', post.conversationId)}
-                                >
-                                  <i className="fas fa-comment-dots"></i> Message
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
                       <div className="post-time">
                         {user && post.author?._id === user._id && (
                           <div className="post-actions-menu">
@@ -991,25 +978,34 @@ export default function PostsPage() {
                         <p>{post.content}</p>
                       )}
                     </div>
+                    {post.group && (
+                      <div className="post-group-tag">
+                        <span className="post-group-icon">📚</span>
+                        <span className="post-group-name">{post.group.name}</span>
+                        <button className="post-group-join-btn" onClick={() => navigate(`/groups/${post.group._id}`)}>View Group</button>
+                      </div>
+                    )}
                     <div className="post-actions">
                       {(() => {
                         const viewerId = userId;
-                        const isPostLiked = viewerId
-                          ? (post.likes || []).some(l => {
-                              const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
-                              return id === viewerId;
-                            })
-                          : false;
+                        const isOwnPost = viewerId && ((post.author?._id || post.author) === viewerId);
+                        const isPostLiked = viewerId ? (post.likes || []).some(likeId => {
+                          const l = (typeof likeId === 'string' || typeof likeId === 'number') ? likeId : (likeId._id || likeId.id);
+                          return l === viewerId;
+                        }) : false;
+                        
                         return (
                           <>
                             <button
                               type="button"
-                              className={`action-btn btn-like ${isPostLiked ? 'liked' : ''} ${isGuest ? 'guest-locked' : ''}`}
+                              className={`ink-stamp-btn ${isPostLiked ? 'stamped' : ''} ${isGuest ? 'guest-locked' : ''}`}
                               onClick={() => handleLike(post._id)}
+                              disabled={isOwnPost}
+                              style={{ opacity: isOwnPost ? 0.5 : 1, cursor: isOwnPost ? 'not-allowed' : 'pointer' }}
                               aria-disabled={isGuest}
-                              title={isGuest ? 'Sign in to like posts' : undefined}
+                              title={isGuest ? 'Sign in to stamp posts' : (isOwnPost ? 'Cannot stamp your own post' : undefined)}
                             >
-                              <i className={`${isPostLiked ? 'fas fa-heart' : 'far fa-heart'}`}></i><span>{post.likes?.length || 0}</span>
+                              {isPostLiked ? 'STAMPED' : 'STAMP'} {post.likes?.length > 0 ? `(${post.likes.length})` : '(0)'}
                             </button>
                             <button type="button" className="action-btn comment-btn" onClick={() => handleToggleComments(post._id)}>
                               <i className="far fa-comment"></i><span>{post.commentCount || 0}</span>
@@ -1026,6 +1022,11 @@ export default function PostsPage() {
                           </>
                         );
                       })()}
+                    </div>
+                    <div className="post-book-byline">
+                      <span>— written by <Link to={`/profile/${post.author?._id}`} className="post-author-link">{post.author?.username || 'Unknown Author'}</Link></span>
+                      <span> · </span>
+                      <span>{new Date(post.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
                     </div>
                     {showComments[post._id] && (
                       <div className="comments-section">
@@ -1085,6 +1086,8 @@ export default function PostsPage() {
                       </div>
                     )}
                   </article>
+                  <div className="torn-paper-divider"></div>
+                  </React.Fragment>
                 );
                 })}
               </>

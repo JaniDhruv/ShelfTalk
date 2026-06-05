@@ -305,6 +305,18 @@ export default function Discover() {
             onClick={() => {
               if (isGuest) {
                 requireAuth('Sign in to invite friends to ShelfTalk.');
+                return;
+              }
+              const shareData = {
+                title: 'ShelfTalk',
+                text: "Join me on ShelfTalk and let's read together!",
+                url: window.location.origin,
+              };
+              if (navigator.share) {
+                navigator.share(shareData).catch(err => console.error('Error sharing:', err));
+              } else {
+                navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+                alert('Invite link copied to clipboard!');
               }
             }}
           >

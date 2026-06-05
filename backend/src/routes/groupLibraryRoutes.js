@@ -1,25 +1,14 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
 
 import GroupBook from '../models/GroupBook.js';
 import Group from '../models/Group.js';
+import { uploadFileToGridFS, deleteFileFromGridFS } from '../utils/gridfs.js';
 
 const router = express.Router({ mergeParams: true });
 
-const uploadDir = path.join(process.cwd(), 'uploads', 'library');
-fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${unique}-${file.originalname}`);
-  },
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -65,10 +54,14 @@ router.post('/', upload.single('pdf'), async (req, res) => {
 
     if (!req.file) return res.status(400).json({ message: 'PDF file is required' });
 
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const filename = `${unique}-${req.file.originalname}`;
+    await uploadFileToGridFS(req.file.buffer, filename, req.file.mimetype);
+
     const book = await GroupBook.create({
       groupId,
       uploadedBy: userId,
-      filename: req.file.filename,
+      filename: filename,
       originalName: req.file.originalname,
       title: req.body.title || path.parse(req.file.originalname).name,
       fileSize: req.file.size,
@@ -113,10 +106,11 @@ router.delete('/:bookId', async (req, res) => {
     if (!book) return res.status(404).json({ message: 'Book not found' });
     if (toId(book.groupId) !== toId(groupId)) return res.status(404).json({ message: 'Book not in this group' });
 
-    const filePath = path.join(uploadDir, book.filename);
     try {
-      fs.unlinkSync(filePath);
-    } catch {}
+      await deleteFileFromGridFS(book.filename);
+    } catch (err) {
+      console.error('Failed to delete from GridFS:', err);
+    }
 
     await GroupBook.findByIdAndDelete(bookId);
     return res.status(200).json({ message: 'Book deleted' });

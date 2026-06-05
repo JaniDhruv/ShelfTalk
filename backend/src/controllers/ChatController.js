@@ -18,6 +18,7 @@ import {
   emitMessageDeleted,
   emitMessageEdited,
 } from '../socket/chatEvents.js';
+import { uploadFileToGridFS } from '../utils/gridfs.js';
 
 const sendError = (res, error, fallbackStatus = 400) => {
   res.status(error?.status || fallbackStatus).json({
@@ -79,10 +80,16 @@ export const sendAttachment = async (req, res) => {
 
     const ext = path.extname(file.originalname).toLowerCase();
     const isImage = ['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext);
+    
+    // Save to GridFS
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const filename = `${unique}${ext}`;
+    await uploadFileToGridFS(file.buffer, filename, file.mimetype);
+
     const result = await sendConversationAttachment({
       conversationId,
       senderId,
-      content: `/uploads/${file.filename}`,
+      content: `/uploads/${filename}`,
       type: isImage ? 'image' : 'file',
       fileName: file.originalname,
     });

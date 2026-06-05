@@ -19,6 +19,7 @@ import bookRoutes from './routes/bookRoutes.js';
 import readingSessionRoutes from './routes/readingSessionRoutes.js';
 import groupLibraryRoutes from './routes/groupLibraryRoutes.js';
 import diaryRoutes from './routes/diaryRoutes.js';
+import fileRoutes from './routes/FileRoutes.js';
 import Profile from './models/Profile.js';
 import { configureChatSocket } from './socket/chatSocket.js';
 
@@ -35,12 +36,8 @@ app.set('io', io);
 app.use(express.json());
 app.use(cors());
 
-// Static uploads folder
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-// uploads folder is at backend/uploads (one level up from src)
-const uploadsPath = path.join(__dirname, '..', 'uploads');
-app.use('/uploads', express.static(uploadsPath));
+// GridFS uploads route
+app.use('/uploads', fileRoutes);
 
 // Simple route for testing
 app.get('/', (req, res) => {

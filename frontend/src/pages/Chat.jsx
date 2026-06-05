@@ -605,7 +605,7 @@ export default function Chat() {
       if (response.ok) {
         const users = await response.json();
         const uid = user?._id || user?.id;
-        setFoundUsers(users.filter(u => u._id !== uid)); // Exclude current user
+        setFoundUsers(users.filter(u => (u._id || u.id) !== uid)); // Exclude current user
       }
     } catch (error) {
       console.error('Error searching users:', error);
@@ -1203,7 +1203,7 @@ export default function Chat() {
                   <h4>Users found:</h4>
                   <div className="user-list">
                     {foundUsers.map(foundUser => (
-                      <div key={foundUser._id} className="user-result-item">
+                      <div key={foundUser._id || foundUser.id} className="user-result-item">
                         <div className="user-info">
                           <div className="user-avatar modal-user-avatar">
                             <div className="avatar-circle">
@@ -1219,7 +1219,7 @@ export default function Chat() {
                         </div>
                         <button
                           className="modal-action-btn"
-                          onClick={() => createDirectMessage(foundUser._id)}
+                          onClick={() => createDirectMessage(foundUser._id || foundUser.id)}
                           disabled={isCreatingChat}
                         >
                           {isCreatingChat ? 'Creating...' : 'Start Chat'}

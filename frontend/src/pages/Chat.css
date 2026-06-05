@@ -1687,6 +1687,20 @@
   letter-spacing: 1px;
   border-radius: 2px;
   padding: 8px 20px;
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.modal-action-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.modal-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .modal-user-avatar {

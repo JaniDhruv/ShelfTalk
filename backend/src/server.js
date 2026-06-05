@@ -48,6 +48,10 @@ app.get('/', (req, res) => {
   res.send('ShelfTalk API is running...');
 });
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);

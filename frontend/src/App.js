@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import PostsPage from './pages/PostsPage';
@@ -49,6 +50,11 @@ function AppContent() {
 }
 
 function App() {
+  useEffect(() => {
+    fetch(`${import.meta.env.VITE_API_BASE}/health`)
+      .catch(() => {});
+  }, []);
+
   return (
     <AuthProvider>
       <ToastProvider>

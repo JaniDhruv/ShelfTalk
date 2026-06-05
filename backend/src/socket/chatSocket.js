@@ -129,8 +129,9 @@ const guarded = (handler) => async (payload = {}, ack) => {
 export const configureChatSocket = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: '*',
+      origin: process.env.CLIENT_URL || '*',
       methods: ['GET', 'POST', 'PUT', 'DELETE'],
+      credentials: true
     },
   });
 

@@ -6,10 +6,13 @@ import reportWebVitals from './reportWebVitals';
 import { AuthProvider } from './context/AuthContext';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
+import { Analytics } from '@vercel/analytics/react';
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <AuthProvider>
     <App />
+    <Analytics />
   </AuthProvider>
 );
 

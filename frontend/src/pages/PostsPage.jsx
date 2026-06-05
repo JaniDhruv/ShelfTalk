@@ -44,6 +44,26 @@ const formatPresenceLabel = (presence) => {
   return humanized ? `Last seen ${humanized}` : 'Offline';
 };
 
+const renderTextWithQuote = (text, pClassName = "") => {
+  if (!text) return null;
+  if (typeof text === 'string' && text.trim().startsWith('/quote ')) {
+    const content = text.replace('/quote ', '').trim();
+    const parts = content.split(' - ');
+    const quoteText = parts[0];
+    const authorText = parts.length > 1 ? parts.slice(1).join(' - ') : 'Unknown Author';
+    return (
+      <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%', margin: '10px 0' }}>
+        <div className="book-quote-card" style={{ maxWidth: '400px' }}>
+          <div className="book-quote-icon">📖</div>
+          <div className="book-quote-text">"{quoteText.trim()}"</div>
+          <div className="book-quote-author">{authorText.trim()}</div>
+        </div>
+      </div>
+    );
+  }
+  return pClassName ? <p className={pClassName}>{text}</p> : <p>{text}</p>;
+};
+
 // Recursive comment component
 const CommentItem = ({ 
   comment, 
@@ -140,7 +160,7 @@ const CommentItem = ({
             </div>
           </div>
         ) : (
-          <p className="comment-text">{comment.text}</p>
+          renderTextWithQuote(comment.text, "comment-text")
         )}
         
         <div className="comment-actions-bar">
@@ -202,7 +222,7 @@ const CommentItem = ({
                 <textarea
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  placeholder={`Reply to ${comment.author?.username}...`}
+                  placeholder={`Reply to ${comment.author?.username}... (Type /quote Text - Author)`}
                   className="themed-textarea"
                 />
                 <div className="form-actions">
@@ -477,8 +497,8 @@ export default function PostsPage() {
       });
 
       if (response.ok) {
-        // Refresh posts to show updated likes
-        fetchPosts();
+        const payload = await response.json();
+        setPosts(prev => prev.map(p => p._id === postId ? { ...p, likes: payload.likes } : p));
       }
     } catch (err) {
       console.error('Error liking post:', err);
@@ -516,9 +536,11 @@ export default function PostsPage() {
         throw new Error(errorData.message || 'Failed to update post');
       }
 
+      const payload = await res.json();
+      const updatedPost = payload.data || payload;
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, content: updatedPost.content, updatedAt: updatedPost.updatedAt } : p));
       setEditingPost(null);
       setEditContent('');
-      await fetchPosts();
     } catch (error) {
       console.error('Error updating post:', error);
       setError(`Failed to update post: ${error.message}`);
@@ -552,7 +574,7 @@ export default function PostsPage() {
 
         if (!res.ok) throw new Error('Failed to delete post');
         
-        await fetchPosts();
+        setPosts(prev => prev.filter(p => p._id !== deleteTarget.id));
       } else if (deleteTarget.type === 'comment') {
         const res = await fetch(`${API_BASE}/api/comments/${deleteTarget.id}`, {
           method: 'DELETE',
@@ -562,7 +584,17 @@ export default function PostsPage() {
 
         if (!res.ok) throw new Error('Failed to delete comment');
         
-        await fetchComments(deleteTarget.postId);
+        setComments(prev => {
+          const postComments = prev[deleteTarget.postId] || [];
+          return {
+             ...prev,
+             [deleteTarget.postId]: postComments.filter(c => c._id !== deleteTarget.id).map(c => ({
+               ...c,
+               replies: (c.replies || []).filter(r => r._id !== deleteTarget.id)
+             }))
+          };
+        });
+        setPosts(prev => prev.map(p => p._id === deleteTarget.postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p));
       }
     } catch (error) {
       console.error('Error deleting:', error);
@@ -640,10 +672,11 @@ export default function PostsPage() {
       if (response.ok) {
         // Clear the input
         setCommentText(prev => ({ ...prev, [postId]: '' }));
-        
-        // Refresh comments
-        await fetchComments(postId);
-        
+        const newCommentObj = await response.json();
+        setComments(prev => ({
+          ...prev,
+          [postId]: prev[postId] ? [newCommentObj, ...prev[postId]] : [newCommentObj]
+        }));
         // Update the comment count for this specific post
         setPosts(prevPosts => 
           prevPosts.map(post => 
@@ -672,8 +705,20 @@ export default function PostsPage() {
       });
 
       if (response.ok) {
-        // Refresh comments to show updated likes
-        await fetchComments(postId);
+        const data = await response.json();
+        setComments(prev => {
+          const postComments = prev[postId] || [];
+          return {
+             ...prev,
+             [postId]: postComments.map(c => {
+               if (c._id === commentId) return { ...c, likes: data.likes };
+               if (c.replies) {
+                  return { ...c, replies: c.replies.map(r => r._id === commentId ? { ...r, likes: data.likes } : r) };
+               }
+               return c;
+             })
+          };
+        });
       }
     } catch (err) {
       console.error('Error liking comment:', err);
@@ -710,9 +755,23 @@ export default function PostsPage() {
         throw new Error(errorData.message || 'Failed to update comment');
       }
 
+      const payload = await res.json();
+      const updatedComment = payload.data || payload.comment || payload;
+      setComments(prev => {
+          const postComments = prev[postId] || [];
+          return {
+             ...prev,
+             [postId]: postComments.map(c => {
+               if (c._id === commentId) return { ...c, text: updatedComment.text, updatedAt: updatedComment.updatedAt };
+               if (c.replies) {
+                  return { ...c, replies: c.replies.map(r => r._id === commentId ? { ...r, text: updatedComment.text, updatedAt: updatedComment.updatedAt } : r) };
+               }
+               return c;
+             })
+          };
+      });
       setEditingComment(null);
       setEditCommentText('');
-      await fetchComments(postId);
     } catch (error) {
       console.error('Error updating comment:', error);
       setError(`Failed to update comment: ${error.message}`);
@@ -771,9 +830,20 @@ export default function PostsPage() {
       });
 
       if (response.ok) {
+        const newReply = await response.json();
+        setComments(prev => {
+          const postComments = prev[postId] || [];
+          return {
+            ...prev,
+            [postId]: postComments.map(c => 
+              c._id === parentCommentId 
+                ? { ...c, replies: [...(c.replies || []), newReply] } 
+                : c
+            )
+          };
+        });
         setReplyText('');
         setReplyingTo(null);
-        await fetchComments(postId);
         
         // Update the comment count for this specific post
         setPosts(prevPosts => 
@@ -924,7 +994,7 @@ export default function PostsPage() {
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="What book are you reading? Share a recommendation, review, or start a discussion..."
+                placeholder="What book are you reading? Share a recommendation... Or type /quote Text - Author"
                 className="post-textarea"
                 rows={4}
                 disabled={isLoading}
@@ -1024,7 +1094,7 @@ export default function PostsPage() {
                           </div>
                         </div>
                       ) : (
-                        <p>{post.content}</p>
+                        renderTextWithQuote(post.content)
                       )}
                     </div>
                     {post.group && (
@@ -1095,7 +1165,7 @@ export default function PostsPage() {
                             <div className="comment-input-wrapper">
                               <div className="comment-user-avatar">{user?.username ? user.username[0].toUpperCase() : 'U'}</div>
                               <div className="comment-input-container">
-                                <textarea value={commentText[post._id] || ''} onChange={e => setCommentText(prev => ({ ...prev, [post._id]: e.target.value }))} placeholder="Write a comment..." className="comment-textarea" rows={2} maxLength={500} />
+                                <textarea value={commentText[post._id] || ''} onChange={e => setCommentText(prev => ({ ...prev, [post._id]: e.target.value }))} placeholder="Write a comment... (Type /quote Text - Author)" className="comment-textarea" rows={2} maxLength={500} />
                                 <div className="comment-actions">
                                   <span className="comment-char-count">{(commentText[post._id] || '').length}/500</span>
                                   <button type="button" className="btn-comment-post" onClick={() => handleAddComment(post._id)} disabled={!(commentText[post._id]?.trim())}>
@@ -1194,7 +1264,7 @@ export default function PostsPage() {
                           </div>
                         </div>
                         <div className="user-details">
-                          <span className="user-name">{c.type === 'group' ? (c.name || 'Group') : fullName}</span>
+                          <span className="user-name">{c.type === 'group' ? (c.group?.name || c.name || 'Group') : fullName}</span>
                         </div>
                       </div>
                       <button className="btn btn-primary" disabled={shareLoading} onClick={async () => {

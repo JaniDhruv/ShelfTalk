@@ -96,6 +96,60 @@ export default function GroupPage() {
   const isGuest = !user;
   const userId = user?._id || user?.id;
 
+  const renderTextWithLinks = (text) => {
+    if (!text) return '';
+
+    // Book Quote feature
+    if (typeof text === 'string' && text.trim().startsWith('/quote ')) {
+      const content = text.replace('/quote ', '').trim();
+      const parts = content.split(' - ');
+      const quoteText = parts[0];
+      const authorText = parts.length > 1 ? parts.slice(1).join(' - ') : 'Unknown Author';
+      return (
+        <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <div className="book-quote-card">
+            <div className="book-quote-icon">📖</div>
+            <div className="book-quote-text">"{quoteText.trim()}"</div>
+            <div className="book-quote-author">{authorText.trim()}</div>
+          </div>
+        </div>
+      );
+    }
+
+    if (typeof text === 'string' && text.startsWith('LINKMSG::')) {
+      const parts = text.split('::');
+      const label = parts[1] || 'View link';
+      const url = parts[2] || '#';
+      const snippet = parts[3] || '';
+      const formattedLabel = label.startsWith('Check out this post by ') ? label.replace('Check out this post by ', 'Post by ') : label;
+      return (
+        <div onClick={() => {
+          try {
+            const urlObj = new URL(url);
+            if (urlObj.hostname === window.location.hostname) {
+              navigate(urlObj.pathname + urlObj.search + urlObj.hash);
+              return;
+            }
+          } catch(e) {}
+          window.open(url, '_blank');
+        }} className="mini-post-card" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+          <div className="mini-post-header">📄 {formattedLabel}</div>
+          <hr style={{ border: 'none', borderTop: '1px solid #d4c4a8', margin: '8px 0' }} />
+          {snippet && <div className="mini-post-snippet">"{snippet}"</div>}
+          <div className="mini-post-action">[View Post →]</div>
+        </div>
+      );
+    }
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = String(text).split(urlRegex);
+    return parts.map((part, idx) => {
+      if (urlRegex.test(part)) {
+        return <a key={idx} href={part} target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{part}</a>;
+      }
+      return <span key={idx}>{part}</span>;
+    });
+  };
+
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1377,7 +1431,7 @@ export default function GroupPage() {
                                       ) : (
                                         <div className="message-bubble">
                                           {!isOwn && <strong style={{ display: 'block', fontSize: '0.8rem', opacity: 0.8, marginBottom: '2px' }}>{msg.sender?.username || 'User'}</strong>}
-                                          {msg.content}
+                                          {renderTextWithLinks(msg.content)}
                                         </div>
                                       )}
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
@@ -1783,7 +1837,7 @@ export default function GroupPage() {
                               <div style={{ background: 'var(--gp-crimson)', width: 36, height: 36, borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 {c.type === 'group' ? <i className="fas fa-users" /> : (fullName[0] || 'U').toUpperCase()}
                               </div>
-                              <span style={{ fontWeight: 600, color: 'var(--gp-text)' }}>{c.type === 'group' ? (c.name || 'Group') : fullName}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--gp-text)' }}>{c.type === 'group' ? (c.group?.name || c.name || 'Group') : fullName}</span>
                             </div>
                             <button
                               className={`gp-btn ${shareLoading ? 'gp-btn--disabled' : 'gp-btn--sage'}`}

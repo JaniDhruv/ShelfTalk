@@ -38,7 +38,7 @@ function ConfettiParticles() {
       size: 6 + Math.random() * 8,
       rotation: Math.random() * 360,
     })),
-  []);
+    []);
 
   return (
     <div className="pdf-confetti-particles">
@@ -55,6 +55,34 @@ function ConfettiParticles() {
             animationDelay: p.delay,
             animationDuration: p.duration,
             transform: `rotate(${p.rotation}deg)`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function AmbientEmbers() {
+  const embers = useMemo(() =>
+    Array.from({ length: 6 }, (_, i) => ({
+      id: i,
+      left: `${10 + Math.random() * 80}%`,
+      delay: `${Math.random() * 5}s`,
+      duration: `${8 + Math.random() * 7}s`,
+    })),
+    []);
+
+  return (
+    <div className="pdf-ambient-embers">
+      {embers.map((e) => (
+        <div
+          key={e.id}
+          className="pdf-ember"
+          style={{
+            left: e.left,
+            bottom: '-10px',
+            animationDelay: e.delay,
+            animationDuration: e.duration,
           }}
         />
       ))}
@@ -85,6 +113,10 @@ export default function PdfReadingRoom() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageCount, setPageCount] = useState(0);
   const [pdfLoaded, setPdfLoaded] = useState(false);
+  const [isTurning, setIsTurning] = useState(false);
+  const [isEditingPage, setIsEditingPage] = useState(false);
+  const [lastActiveUserId, setLastActiveUserId] = useState(null);
+  const [annotationsExpanded, setAnnotationsExpanded] = useState(false);
 
   // Annotations
   const [reactionEmoji, setReactionEmoji] = useState(REACTION_PRESET[0]);
@@ -182,7 +214,7 @@ export default function PdfReadingRoom() {
 
     // Cancel any in-flight render
     if (renderTaskRef.current) {
-      try { renderTaskRef.current.cancel(); } catch {}
+      try { renderTaskRef.current.cancel(); } catch { }
       renderTaskRef.current = null;
     }
 
@@ -213,6 +245,19 @@ export default function PdfReadingRoom() {
   const commitPage = useCallback(async (nextPage) => {
     if (!session || !participant) return;
     const page = clamp(Number(nextPage || 1), 1, pageCount || 9999);
+    if (page !== currentPage) {
+      setIsTurning(true);
+      setTimeout(() => setIsTurning(false), 400);
+
+      // Milestone Toasts
+      if (page === 10 && currentPage < 10) pushNotify("📖 10 pages deep — you're in the story now", 'success');
+      else if (pageCount > 0) {
+        const pct = page / pageCount;
+        const oldPct = currentPage / pageCount;
+        if (pct >= 0.25 && oldPct < 0.25) pushNotify("⚡ A quarter through — the plot thickens", 'success');
+        else if (pct >= 0.50 && oldPct < 0.50) pushNotify("🔥 Halfway — no turning back now", 'success');
+      }
+    }
     setCurrentPage(page);
 
     // Debounce server update
@@ -363,6 +408,10 @@ export default function PdfReadingRoom() {
     const onPageUpdated = (payload) => {
       if (!payload || getEntityId(payload.sessionId) !== getEntityId(session?._id)) return;
       if (payload.session) setSession(payload.session);
+      if (payload.userId && getEntityId(payload.userId) !== userId) {
+        setLastActiveUserId(getEntityId(payload.userId));
+        setTimeout(() => setLastActiveUserId(null), 3000);
+      }
     };
 
     const onAnnotationAdded = (payload) => {
@@ -417,10 +466,10 @@ export default function PdfReadingRoom() {
   useEffect(() => {
     const onKey = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key.toLowerCase() === 'd') {
         e.preventDefault();
         commitPage(currentPage + 1);
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key.toLowerCase() === 'a') {
         e.preventDefault();
         commitPage(currentPage - 1);
       }
@@ -508,8 +557,7 @@ export default function PdfReadingRoom() {
 
   return (
     <div className="reading-room-page">
-      <div className="reading-room-ambient reading-room-ambient-one" />
-      <div className="reading-room-ambient reading-room-ambient-two" />
+      <AmbientEmbers />
 
       <div className="reading-room-shell">
         {/* Header */}
@@ -520,11 +568,11 @@ export default function PdfReadingRoom() {
               Live Reading Room
             </div>
             <h1>{session?.title || group?.name || 'Reading Room'}</h1>
-            <p>{sortedParticipants.length} reader{sortedParticipants.length !== 1 ? 's' : ''} • Page {myPage}{pageCount ? ` / ${pageCount}` : ''} • {progress}% complete</p>
+            <div className="reading-room-meta">{sortedParticipants.length} reader{sortedParticipants.length !== 1 ? 's' : ''} • Page {myPage}{pageCount ? ` / ${pageCount}` : ''} • {progress}% complete</div>
           </div>
           <div className="reading-room-hero-actions">
             {canEndSession && (
-              <button type="button" className="reading-room-secondary-btn" onClick={() => setShowEndModal(true)} style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+              <button type="button" className="end-session-btn" onClick={() => setShowEndModal(true)}>
                 End Session
               </button>
             )}
@@ -536,183 +584,179 @@ export default function PdfReadingRoom() {
 
         {error && <div className="reading-room-banner reading-room-banner-error">{error}</div>}
 
-        {/* Main two-panel layout */}
+        {/* Main single-column layout */}
         <div className="pdf-room-layout">
-          {/* ===== LEFT: PDF Viewer ===== */}
+          {/* Presence Strip */}
+          <div className="presence-strip">
+            {sortedParticipants.map((p, idx) => {
+              const pPage = Number(p.currentPage || 1);
+              const isYou = getEntityId(p.userId) === userId;
+              const finished = Boolean(p.completedAt);
+              const pct = pageCount > 0 ? Math.min(100, Math.round((pPage / pageCount) * 100)) : 0;
+              const isRecentlyActive = lastActiveUserId === getEntityId(p.userId);
+
+              return (
+                <div key={getEntityId(p.userId)} className="presence-card" style={isYou ? { borderColor: 'rgba(201,168,76,0.6)' } : {}}>
+                  <div className={`presence-avatar ${isRecentlyActive ? 'recently-active' : ''}`} style={{ background: avatarColor(idx) }}>
+                    {(p.username?.[0] || 'R').toUpperCase()}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#fdfaf6', fontWeight: 600 }}>{p.username}{isYou ? ' (you)' : ''}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: '0.65rem', color: '#c9a84c' }}>{finished ? '✅ Finished' : `p.${pPage}`}</span>
+                      <div className="presence-mini-progress">
+                        <div className="presence-mini-fill" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* PDF Viewer */}
           <div className="pdf-viewer-panel">
             <div className="pdf-viewer-header">
-              <strong>{session?.title || 'Book'}</strong>
-              <span>Page {myPage}{pageCount ? ` of ${pageCount}` : ''}</span>
+              <div className="book-inner-title">{session?.title || 'Book'}</div>
+              <span className="page-indicator-badge">PAGE {myPage}{pageCount ? ` OF ${pageCount}` : ''}</span>
             </div>
 
-            {/* Progress bar */}
             <div style={{ height: 4, background: 'rgba(114,47,55,0.06)' }}>
-              <div style={{
-                height: '100%',
-                width: `${progress}%`,
-                background: 'linear-gradient(90deg, #722f37, #b8860b)',
-                borderRadius: '0 2px 2px 0',
-                transition: 'width 0.4s ease',
-              }} />
+              <div className="reading-room-progress-fill" style={{ width: `${progress}%` }} />
             </div>
 
-            <div className="pdf-canvas-wrap">
+            <div className={`pdf-canvas-wrap ${isTurning ? 'turning' : ''}`} style={{ position: 'relative' }}>
               <canvas ref={canvasRef} />
+
+              {/* Emoji Pins on Right Edge */}
+              <div className="emoji-pins-container">
+                {visibleAnnotations.slice(0, 3).map((a, idx) => (
+                  <div key={`pin-${idx}`} className="emoji-pin">
+                    {a.emoji}
+                    <div className="emoji-pin-tooltip">
+                      <strong>{a.username}</strong>: {a.note || a.emoji}
+                    </div>
+                  </div>
+                ))}
+                {visibleAnnotations.length > 3 && (
+                  <div className="emoji-pin" style={{ fontSize: '0.6rem', fontWeight: 'bold', color: '#6b3a2a' }}>
+                    +{visibleAnnotations.length - 3}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="pdf-page-nav">
+            <div className="page-nav-floating">
               <button
                 type="button"
-                className="reading-room-page-btn"
+                className="page-nav-btn"
                 disabled={myPage <= 1}
                 onClick={() => commitPage(myPage - 1)}
-                title="Previous page (←)"
+                title="Previous page (← or A)"
               >
-                ‹
+                ◀
               </button>
-              <input
-                type="number"
-                min={1}
-                max={pageCount || undefined}
-                value={currentPage}
-                onChange={(e) => setCurrentPage(Number(e.target.value))}
-                onBlur={(e) => commitPage(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') commitPage(e.target.value); }}
-                className="reading-room-page-input"
-              />
-              <span className="pdf-page-total">/ {pageCount || '—'}</span>
+
+              {isEditingPage ? (
+                <input
+                  type="number"
+                  min={1}
+                  max={pageCount || 999}
+                  defaultValue={myPage}
+                  onBlur={(e) => {
+                    commitPage(Number(e.target.value));
+                    setIsEditingPage(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      commitPage(Number(e.target.value));
+                      setIsEditingPage(false);
+                    }
+                  }}
+                  autoFocus
+                  className="page-jump-input"
+                />
+              ) : (
+                <span
+                  className="page-nav-display"
+                  onClick={() => setIsEditingPage(true)}
+                  title="Click to jump to page"
+                >
+                  {myPage} / {pageCount || '—'}
+                </span>
+              )}
+
               <button
                 type="button"
-                className="reading-room-page-btn"
+                className="page-nav-btn"
                 disabled={pageCount > 0 && myPage >= pageCount}
                 onClick={() => commitPage(myPage + 1)}
-                title="Next page (→)"
+                title="Next page (→ or D)"
               >
-                ›
+                ▶
               </button>
             </div>
           </div>
 
-          {/* ===== RIGHT: Sidebar ===== */}
-          <div className="pdf-sidebar">
-            {/* Reading Pulse / Heatmap */}
-            {pageCount > 0 && heatmapData.length > 0 && (
-              <div className="pdf-sidebar-card">
-                <div className="pdf-sidebar-title">
-                  <h4>📊 Reading Pulse</h4>
-                  <span>{sortedParticipants.length} reader{sortedParticipants.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="pdf-heatmap" title="Click to jump to a page">
-                  {heatmapData.map((intensity, i) => (
-                    <div
-                      key={i}
-                      className="pdf-heatmap-seg"
-                      style={{
-                        background: intensity > 0
-                          ? `rgba(184, 134, 11, ${0.15 + intensity * 0.85})`
-                          : 'rgba(114, 47, 55, 0.04)',
-                      }}
-                      title={`Page ${i + 1}`}
-                      onClick={() => commitPage(i + 1)}
-                    />
-                  ))}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: '0.68rem', color: '#708090' }}>
-                  <span>p.1</span>
-                  <span>p.{pageCount}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Leaderboard / Presence */}
-            <div className="pdf-sidebar-card">
-              <div className="pdf-sidebar-title">
-                <h4>🏆 Leaderboard</h4>
-                <span>{sortedParticipants.length} active</span>
-              </div>
-              <div className="pdf-presence-list">
-                {sortedParticipants.map((p, idx) => {
-                  const pPage = Number(p.currentPage || 1);
-                  const isYou = getEntityId(p.userId) === userId;
-                  const finished = Boolean(p.completedAt);
-                  const relation = finished ? 'finished' : pPage > myPage ? 'ahead' : pPage < myPage ? 'behind' : 'same';
-                  const pct = pageCount > 0 ? Math.min(100, Math.round((pPage / pageCount) * 100)) : 0;
-
-                  return (
-                    <div key={getEntityId(p.userId)} className={`pdf-presence-row ${isYou ? 'is-you' : ''}`}>
-                      <span className="pdf-rank-number">#{idx + 1}</span>
-                      <div className="pdf-presence-avatar" style={{ background: avatarColor(idx) }}>
-                        {(p.username?.[0] || 'R').toUpperCase()}
-                      </div>
-                      <div className="pdf-presence-info">
-                        <div className="pdf-presence-name">
-                          {p.username}{isYou ? ' (you)' : ''}
-                        </div>
-                        <div className="pdf-presence-meta">
-                          <span className="pdf-presence-page">📖 p.{pPage}{pageCount ? ` • ${pct}%` : ''}</span>
-                          <span className={`pdf-presence-badge ${relation}`}>
-                            {finished ? '✅ Finished' : relation === 'ahead' ? '🚀 Ahead' : relation === 'behind' ? '🐢 Behind' : '📖 Same'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Annotations */}
-            <div className="pdf-sidebar-card">
-              <div className="pdf-sidebar-title">
-                <h4>📝 Annotations</h4>
-                <span>p.{myPage}</span>
-              </div>
-
-              {/* Annotation form */}
-              <div className="pdf-annotation-form">
-                <div className="pdf-annotation-emojis">
-                  {REACTION_PRESET.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      className={reactionEmoji === emoji ? 'active' : ''}
-                      onClick={() => setReactionEmoji(emoji)}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-                <div className="pdf-annotation-input-row">
-                  <input
-                    type="text"
-                    value={reactionNote}
-                    maxLength={140}
-                    onChange={(e) => setReactionNote(e.target.value)}
-                    placeholder={`Note for p.${myPage}...`}
-                    onKeyDown={(e) => { if (e.key === 'Enter') dropAnnotation(); }}
-                  />
-                  <button type="button" onClick={dropAnnotation}>
-                    {reactionEmoji} Add
-                  </button>
-                </div>
-              </div>
-
-              {/* Annotation timeline */}
-              <div className="pdf-annotation-timeline">
-                {visibleAnnotations.length === 0 ? (
-                  <div className="pdf-annotation-empty">No annotations yet. React as you read!</div>
-                ) : (
-                  visibleAnnotations.slice(0, 20).map((a, idx) => (
-                    <div key={`${a.createdAt || idx}-${idx}`} className="pdf-annotation-item">
-                      <span className="pdf-annotation-emoji">{a.emoji}</span>
-                      <div className="pdf-annotation-body">
-                        <strong>{a.username}</strong>
-                        {a.note ? <p>{a.note}</p> : null}
-                      </div>
-                      <span className="pdf-annotation-page-tag">p.{a.page}</span>
-                    </div>
-                  ))
+          {/* Annotations Side Panel */}
+          <div className="pdf-side-column">
+            <div className="annotations-side-panel">
+              <h3 style={{ margin: '0 0 16px', fontFamily: 'Crimson Text', color: '#c9a84c', fontSize: '1.2rem' }}>
+                📌 {visibleAnnotations.length} Annotation{visibleAnnotations.length !== 1 ? 's' : ''} on p.{myPage}
+              </h3>
+              
+              <div className="annotations-content">
+                {visibleAnnotations.length === 0 && (
+                  <div className="annotation-empty-state">
+                    No annotations on this page yet. Be the first to leave a thought!
+                  </div>
                 )}
+
+                {visibleAnnotations.length > 0 && (
+                  <div className="pdf-annotation-timeline">
+                    {visibleAnnotations.slice(0, 20).map((a, idx) => (
+                      <div key={`${a.createdAt || idx}-${idx}`} className="pdf-annotation-item" style={{ background: 'rgba(253,250,246,0.1)', borderColor: 'rgba(201,168,76,0.2)' }}>
+                        <span className="pdf-annotation-emoji">{a.emoji}</span>
+                        <div className="pdf-annotation-body">
+                          <strong style={{ color: '#c9a84c' }}>{a.username}</strong>
+                          {a.note ? <p style={{ color: '#fdfaf6' }}>{a.note}</p> : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="pdf-annotation-form" style={{ marginTop: 16 }}>
+                  <div className="annotation-empty-emojis" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
+                    {REACTION_PRESET.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => setReactionEmoji(emoji)}
+                        style={{
+                          background: reactionEmoji === emoji ? 'rgba(201,168,76,0.25)' : 'rgba(114,47,55,0.1)',
+                          borderColor: reactionEmoji === emoji ? '#c9a84c' : 'rgba(201,168,76,0.3)',
+                        }}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="pdf-annotation-input-row">
+                    <input
+                      type="text"
+                      value={reactionNote}
+                      maxLength={140}
+                      onChange={(e) => setReactionNote(e.target.value)}
+                      placeholder={`Note for p.${myPage}...`}
+                      onKeyDown={(e) => { if (e.key === 'Enter') dropAnnotation(); }}
+                      style={{ background: 'rgba(253, 250, 246, 0.08)', color: '#fdfaf6', border: '1px solid rgba(201,168,76,0.3)' }}
+                    />
+                    <button type="button" onClick={dropAnnotation} style={{ background: '#6b3a2a', color: '#c9a84c', border: '1px solid #c9a84c' }}>
+                      {reactionEmoji} Add Note
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -771,16 +815,16 @@ export default function PdfReadingRoom() {
               Are you sure you want to end this live reading session? This will safely remove everyone from the room and complete the session.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button 
-                type="button" 
-                className="reading-room-secondary-btn" 
+              <button
+                type="button"
+                className="reading-room-secondary-btn"
                 onClick={() => setShowEndModal(false)}
               >
                 Cancel
               </button>
-              <button 
-                type="button" 
-                className="reading-room-primary-btn" 
+              <button
+                type="button"
+                className="reading-room-primary-btn"
                 style={{ background: '#ef4444', borderColor: '#dc2626' }}
                 onClick={handleEndSession}
               >

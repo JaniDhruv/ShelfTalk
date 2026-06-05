@@ -1,13 +1,43 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GuestGate from '../components/GuestGate';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import './ReadingRoom.css';
 
+import './ReadingRoom.css';
+
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+
+function AmbientEmbers() {
+  const embers = useMemo(() =>
+    Array.from({ length: 6 }, (_, i) => ({
+      id: i,
+      left: `${10 + Math.random() * 80}%`,
+      delay: `${Math.random() * 5}s`,
+      duration: `${8 + Math.random() * 7}s`,
+    })),
+    []);
+
+  return (
+    <div className="pdf-ambient-embers">
+      {embers.map((e) => (
+        <div
+          key={e.id}
+          className="pdf-ember"
+          style={{
+            left: e.left,
+            bottom: '-10px',
+            animationDelay: e.delay,
+            animationDuration: e.duration,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function SoloPdfReader() {
   const { groupId, bookId } = useParams();
@@ -23,10 +53,24 @@ export default function SoloPdfReader() {
   const [error, setError] = useState(null);
   const [group, setGroup] = useState(null);
   const [book, setBook] = useState(null);
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageCount, setPageCount] = useState(0);
   const [pdfLoaded, setPdfLoaded] = useState(false);
+  const [isTurning, setIsTurning] = useState(false);
+  const [isEditingPage, setIsEditingPage] = useState(false);
+
+  // Time tracking for Progress Dashboard
+  const [sessionStart] = useState(Date.now());
+  const [sessionTimeMs, setSessionTimeMs] = useState(0);
+  const [startPage, setStartPage] = useState(null);
+
+  useEffect(() => {
+    const int = setInterval(() => {
+      setSessionTimeMs(Date.now() - sessionStart);
+    }, 1000);
+    return () => clearInterval(int);
+  }, [sessionStart]);
 
   const canAccess = Boolean(group && userId && (group.members || []).some((m) => (m._id || m).toString() === userId.toString()));
 
@@ -51,7 +95,7 @@ export default function SoloPdfReader() {
     if (!pdf || !canvas) return;
 
     if (renderTaskRef.current) {
-      try { renderTaskRef.current.cancel(); } catch {}
+      try { renderTaskRef.current.cancel(); } catch { }
       renderTaskRef.current = null;
     }
 
@@ -78,11 +122,15 @@ export default function SoloPdfReader() {
 
   const commitPage = useCallback((nextPage) => {
     const page = clamp(Number(nextPage || 1), 1, pageCount || 9999);
+    if (page !== currentPage) {
+      setIsTurning(true);
+      setTimeout(() => setIsTurning(false), 400);
+    }
     setCurrentPage(page);
     if (bookId && userId) {
       localStorage.setItem(`solo_read_${userId}_${bookId}`, page.toString());
     }
-  }, [pageCount, bookId, userId]);
+  }, [pageCount, bookId, userId, currentPage]);
 
   useEffect(() => {
     if (!userId) return;
@@ -101,18 +149,21 @@ export default function SoloPdfReader() {
 
         const groupData = await groupRes.json();
         const libData = await libraryRes.json();
-        
+
         if (cancelled) return;
         setGroup(groupData);
-        
+
         const targetBook = libData.books.find(b => b._id.toString() === bookId);
         if (!targetBook) throw new Error('Book not found in library');
-        
+
         setBook(targetBook);
 
         const savedPage = localStorage.getItem(`solo_read_${userId}_${bookId}`);
         if (savedPage) {
           setCurrentPage(Number(savedPage));
+          setStartPage(Number(savedPage));
+        } else {
+          setStartPage(1);
         }
 
         if (targetBook.filename) {
@@ -135,10 +186,10 @@ export default function SoloPdfReader() {
   useEffect(() => {
     const onKey = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key.toLowerCase() === 'd') {
         e.preventDefault();
         commitPage(currentPage + 1);
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key.toLowerCase() === 'a') {
         e.preventDefault();
         commitPage(currentPage - 1);
       }
@@ -203,19 +254,17 @@ export default function SoloPdfReader() {
 
   return (
     <div className="reading-room-page solo-mode">
-      <div className="reading-room-ambient reading-room-ambient-one" />
-      <div className="reading-room-ambient reading-room-ambient-two" />
+      <AmbientEmbers />
 
       <div className="reading-room-shell">
         {/* Header */}
         <header className="reading-room-hero">
           <div>
-            <div className="reading-room-kicker" style={{ color: '#87a96b' }}>
-              <i className="fas fa-book-reader" style={{ marginRight: 6 }}></i>
+            <div className="solo-reading-badge">
+              <i className="fas fa-book-reader"></i>
               Solo Reading
             </div>
             <h1>{book?.title || book?.originalName || 'Book'}</h1>
-            <p>Page {myPage}{pageCount ? ` / ${pageCount}` : ''} • {progress}% complete</p>
           </div>
           <div className="reading-room-hero-actions">
             <button type="button" className="reading-room-secondary-btn" onClick={() => navigate(`/groups/${groupId}`)}>
@@ -226,57 +275,99 @@ export default function SoloPdfReader() {
 
         {error && <div className="reading-room-banner reading-room-banner-error">{error}</div>}
 
+        {/* Progress Dashboard */}
+        <div className="progress-dashboard">
+          <div className="progress-dash-header">
+            <div style={{ fontFamily: 'Crimson Text, serif', fontSize: '1.05rem', color: '#c9a84c' }}>
+              <strong>📖 {book?.title || 'Book'}</strong>
+            </div>
+            <div style={{ fontFamily: 'Crimson Text, serif', color: '#fdfaf6' }}>
+              {progress}% · Page {myPage} of {pageCount}
+            </div>
+          </div>
+
+          <div className="progress-dash-bar-bg">
+            <div className="progress-dash-bar-fill" style={{ width: `${progress}%` }} />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: '0.85rem', color: 'rgba(201,168,76,0.8)' }}>
+            <div>
+              ⏱ Reading for {Math.floor(sessionTimeMs / 60000) > 0 ? `${Math.floor(sessionTimeMs / 60000)} min` : '< 1 min'}
+              {(() => {
+                const pagesReadThisSession = Math.max(0, myPage - (startPage || 1));
+                const pagesRemaining = Math.max(0, pageCount - myPage);
+                if (pagesReadThisSession >= 1 && pagesRemaining > 0) {
+                  const msPerPage = sessionTimeMs / pagesReadThisSession;
+                  const minsLeft = Math.ceil((msPerPage * pagesRemaining) / 60000);
+                  return ` · ~${minsLeft} min left at your pace`;
+                }
+                return '';
+              })()}
+            </div>
+            <div>📄 {Math.max(0, pageCount - myPage)} pages left</div>
+          </div>
+        </div>
+
         {/* Main layout */}
         <div className="pdf-room-layout solo-layout">
           <div className="pdf-viewer-panel">
             <div className="pdf-viewer-header">
-              <strong>{book?.title || 'Book'}</strong>
-              <span>Page {myPage}{pageCount ? ` of ${pageCount}` : ''}</span>
+              <div className="book-inner-title">{book?.title || 'Book'}</div>
+              <span className="page-indicator-badge">PAGE {myPage}{pageCount ? ` OF ${pageCount}` : ''}</span>
             </div>
 
-            <div style={{ height: 4, background: 'rgba(114,47,55,0.06)' }}>
-              <div style={{
-                height: '100%',
-                width: `${progress}%`,
-                background: 'linear-gradient(90deg, #722f37, #b8860b)',
-                borderRadius: '0 2px 2px 0',
-                transition: 'width 0.4s ease',
-              }} />
-            </div>
-
-            <div className="pdf-canvas-wrap">
+            <div className={`pdf-canvas-wrap ${isTurning ? 'turning' : ''}`}>
               <canvas ref={canvasRef} />
             </div>
 
-            <div className="pdf-page-nav">
+            <div className="page-nav-floating">
               <button
                 type="button"
-                className="reading-room-page-btn"
+                className="page-nav-btn"
                 disabled={myPage <= 1}
                 onClick={() => commitPage(myPage - 1)}
-                title="Previous page (←)"
+                title="Previous page (← or A)"
               >
-                ‹
+                ◀
               </button>
-              <input
-                type="number"
-                min={1}
-                max={pageCount || undefined}
-                value={currentPage}
-                onChange={(e) => setCurrentPage(Number(e.target.value))}
-                onBlur={(e) => commitPage(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') commitPage(e.target.value); }}
-                className="reading-room-page-input"
-              />
-              <span className="pdf-page-total">/ {pageCount || '—'}</span>
+
+              {isEditingPage ? (
+                <input
+                  type="number"
+                  min={1}
+                  max={pageCount || 999}
+                  defaultValue={myPage}
+                  onBlur={(e) => {
+                    commitPage(Number(e.target.value));
+                    setIsEditingPage(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      commitPage(Number(e.target.value));
+                      setIsEditingPage(false);
+                    }
+                  }}
+                  autoFocus
+                  className="page-jump-input"
+                />
+              ) : (
+                <span
+                  className="page-nav-display"
+                  onClick={() => setIsEditingPage(true)}
+                  title="Click to jump to page"
+                >
+                  {myPage} / {pageCount || '—'}
+                </span>
+              )}
+
               <button
                 type="button"
-                className="reading-room-page-btn"
+                className="page-nav-btn"
                 disabled={pageCount > 0 && myPage >= pageCount}
                 onClick={() => commitPage(myPage + 1)}
-                title="Next page (→)"
+                title="Next page (→ or D)"
               >
-                ›
+                ▶
               </button>
             </div>
           </div>

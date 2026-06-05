@@ -1097,7 +1097,7 @@ export default function PostsPage() {
       </div>
       {sharePostId && createPortal((
         <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={() => setSharePostId(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2147483647, padding: '16px' }}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: '12px', width: '100%', maxWidth: '520px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ background: '#fdfaf6', border: '1px solid #e8dcc8', borderRadius: '2px', width: '100%', maxWidth: '520px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)', overflow: 'hidden', color: '#2f4f4f', fontFamily: "'Crimson Text', serif" }}>
             <div className="modal-header">
               <h3><i className="fas fa-share"></i> Share Post</h3>
               <button className="modal-close-btn" onClick={() => setSharePostId(null)}><i className="fas fa-times"></i></button>

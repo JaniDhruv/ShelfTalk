@@ -5,8 +5,10 @@ import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/ConfirmationModal';
 import GuestGate from '../components/GuestGate';
 import { getChatSocket } from '../lib/socket';
+import './GroupPage.css';
 import './PostsPage.css';
-
+import './Chat.css';
+import './ChatThemeOverrides.css';
 // Helper function to check if two dates are the same day
 const isSameDay = (first, second) => {
   if (!(first instanceof Date) || !(second instanceof Date)) return false;
@@ -805,292 +807,102 @@ export default function GroupPage() {
 
   return (
     <>
-    <div style={{ minHeight: '100vh', backgroundColor: '#F9F4E8' }}>
-      {/* Page Header */}
-      <div style={{ 
-        background: 'linear-gradient(135deg, #8B4513 0%, #A0522D 20%, #CD853F 60%, #DEB887 90%, #F5DEB3 100%)', 
-        color: '#FFFEF7', 
-        padding: '2rem 0' 
-      }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <button 
-                onClick={() => navigate('/groups')} 
-                style={{ 
-                  background: 'rgba(255, 255, 255, 0.2)', 
-                  border: '1px solid rgba(255, 255, 255, 0.3)', 
-                  color: 'white', 
-                  padding: '8px 16px', 
-                  borderRadius: '25px', 
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}
-                onMouseOver={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.3)'}
-                onMouseOut={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
-              >
-                ← Back to Groups
-              </button>
-            </div>
-            <div style={{ fontSize: '14px', opacity: 0.9 }}>
-              <i className="fas fa-users" style={{ marginRight: '8px' }}></i>
-              Community Hub
-            </div>
-          </div>
-        </div>
+    <div className="gp-page">
+      {/* Breadcrumb Bar */}
+      <div className="gp-breadcrumb-bar">
+        <button
+          className="gp-back-btn"
+          onClick={() => navigate('/groups')}
+        >
+          <i className="fas fa-arrow-left" />
+          Back to Groups
+        </button>
+        <span className="gp-breadcrumb-label">
+          <i className="fas fa-users" style={{ marginRight: 6 }} />
+          Community Hub
+        </span>
       </div>
 
       {/* Error Alert */}
       {error && (
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px' }}>
-          <div style={{ 
-            color: '#dc2626', 
-            padding: '16px 20px', 
-            background: '#fee2e2', 
-            border: '1px solid #fecaca', 
-            borderRadius: '12px', 
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <i className="fas fa-exclamation-circle" style={{ fontSize: '18px' }}></i>
+        <div className="gp-content" style={{ paddingBottom: 0 }}>
+          <div className="gp-alert gp-alert--error">
+            <i className="fas fa-exclamation-circle" />
             {error}
           </div>
         </div>
       )}
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px' }}>
+      <div className="gp-content">
         {/* Group Header Card */}
         {loading || !group ? (
-          <div style={{
-            background: 'white',
-            borderRadius: '16px',
-            padding: '32px',
-            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-            marginBottom: '24px',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '18px', color: '#64748b' }}>Loading group...</div>
+          <div className="gp-card gp-hero">
+            <div className="gp-loading">
+              <i className="fas fa-spinner fa-spin" style={{ marginRight: 10 }} />
+              Loading group...
+            </div>
           </div>
         ) : (
-          <div style={{
-            background: 'white',
-            borderRadius: '16px',
-            padding: '32px',
-            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-            marginBottom: '24px',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            {/* Decorative background element */}
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              width: '120px',
-              height: '120px',
-              background: 'linear-gradient(135deg, transparent 50%, rgba(184, 134, 11, 0.06) 50%)',
-              borderBottomLeftRadius: '100%'
-            }}></div>
+          <div className="gp-card gp-hero" style={{ marginBottom: 24 }}>
+            <div className="gp-rule" />
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-                  <div style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #8B4513 0%, #A0522D 20%, #CD853F 60%, #DEB887 90%, #F5DEB3 100%)',
-                    color: '#FFFEF7',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 800,
-                    fontSize: '20px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    overflow: 'hidden',
-                    border: '2px solid rgba(255,255,255,0.7)'
-                  }}>
+            <div className="gp-hero-inner">
+              {/* Left: Group info */}
+              <div className="gp-hero-left">
+                <div className="gp-hero-title-row">
+                  <div className="gp-crest">
                     {group?.photo ? (
-                      <img
-                        src={group.photo}
-                        alt={group?.name || 'Group'}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
+                      <img src={group.photo} alt={group?.name || 'Group'} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                     ) : (
-                      (group?.name?.[0] ? group.name[0].toUpperCase() : (
-                        <i className="fas fa-users" style={{ fontSize: '18px' }}></i>
-                      ))
+                      group?.name?.[0] ? group.name[0].toUpperCase() : <i className="fas fa-users" />
                     )}
                   </div>
-                  <h1 style={{ 
-                    margin: 0, 
-                    color: '#0f172a', 
-                    fontSize: '2.25rem', 
-                    fontWeight: '800',
-                    background: 'linear-gradient(135deg, #8B3A3A, #B8860B)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}>
-                    {group.name}
-                  </h1>
-                  <span style={{
-                    fontSize: '12px',
-                    color: group.visibility === 'private' ? '#ef4444' : '#16a34a',
-                    background: group.visibility === 'private' ? '#fee2e2' : '#dcfce7',
-                    padding: '6px 12px',
-                    borderRadius: '20px',
-                    fontWeight: '600',
-                    border: `1px solid ${group.visibility === 'private' ? '#fecaca' : '#bbf7d0'}`
-                  }}>
-                    <i className={`fas fa-${group.visibility === 'private' ? 'lock' : 'globe'}`} style={{ marginRight: '4px' }}></i>
+                  <h1 className="gp-hero-title">{group.name}</h1>
+                  <span className={`gp-visibility-badge ${group.visibility === 'private' ? 'gp-visibility-badge--private' : 'gp-visibility-badge--public'}`}>
+                    <i className={`fas fa-${group.visibility === 'private' ? 'lock' : 'globe'}`} style={{ marginRight: 5 }} />
                     {group.visibility === 'private' ? 'Private' : 'Public'}
                   </span>
                 </div>
 
-                <p style={{ 
-                  color: '#64748b', 
-                  fontSize: '18px', 
-                  lineHeight: '1.6', 
-                  marginBottom: '16px',
-                  maxWidth: '70%'
-                }}>
-                  {group.description || 'A vibrant community space for meaningful discussions and connections.'}
+                <p className="gp-hero-desc">
+                  {group.description || 'A vibrant literary community for meaningful discussions and shared reading journeys.'}
                 </p>
 
-                <div style={{ 
-                  display: 'flex', 
-                  flexWrap: 'wrap', 
-                  gap: '20px', 
-                  fontSize: '14px', 
-                  color: '#475569' 
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <div style={{
-                      background: 'rgba(184, 134, 11, 0.10)',
-                      color: '#B8860B',
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <i className="fas fa-users" style={{ fontSize: '12px' }}></i>
-                    </div>
+                <div className="gp-hero-meta">
+                  <div className="gp-meta-chip">
+                    <div className="gp-meta-icon"><i className="fas fa-users" /></div>
                     <span><strong>{group.members?.length || 0}</strong> members</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{
-                      background: 'rgba(184, 134, 11, 0.10)',
-                      color: '#B8860B',
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <i className="fas fa-user-crown" style={{ fontSize: '12px' }}></i>
-                    </div>
+                  <div className="gp-meta-chip">
+                    <div className="gp-meta-icon"><i className="fas fa-crown" /></div>
                     <span>Owned by <strong>{ownerDisplayName}</strong></span>
                     <span
                       className={`presence-pill ${ownerPresence.isOnline ? 'online' : 'offline'}`}
                       title={ownerPresence.isOnline ? 'User is online' : (ownerPresence.lastSeen ? `Last seen ${ownerPresence.lastSeen.toLocaleString()}` : 'User is offline')}
                     >
-                      <span className={`status-dot ${ownerPresence.isOnline ? 'online' : 'offline'}`}></span>
+                      <span className={`status-dot ${ownerPresence.isOnline ? 'online' : 'offline'}`} />
                       {ownerPresenceLabel}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              {/* Right: Actions */}
+              <div className="gp-hero-actions">
                 {!isMember ? (
-                  <button 
-                    onClick={joinGroup} 
-                    style={{
-                      background: 'linear-gradient(135deg, #B8860B, #DAA520)',
-                      color: '#FFFEF7',
-                      border: 'none',
-                      borderRadius: '25px',
-                      padding: '12px 24px',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      fontSize: '14px',
-                      boxShadow: '0 4px 12px rgba(184, 134, 11, 0.30)',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseOver={(e) => {
-                      e.target.style.transform = 'translateY(-2px)';
-                      e.target.style.boxShadow = '0 6px 16px rgba(184, 134, 11, 0.40)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.target.style.transform = 'translateY(0)';
-                      e.target.style.boxShadow = '0 4px 12px rgba(184, 134, 11, 0.30)';
-                    }}
-                  >
-                    <i className="fas fa-user-plus" style={{ marginRight: '8px' }}></i>
+                  <button className="gp-btn gp-btn--primary" onClick={joinGroup}>
+                    <i className="fas fa-user-plus" />
                     {isPrivate ? 'Request to Join' : 'Join Group'}
                   </button>
                 ) : (
                   <>
-                    <button 
-                      onClick={openLeaveModal} 
-                      style={{
-                        background: '#f8f9fa',
-                        color: '#6b7280',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '25px',
-                        padding: '12px 24px',
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        fontSize: '14px',
-                        transition: 'all 0.3s ease'
-                      }}
-                      onMouseOver={(e) => {
-                        e.target.style.background = '#fee2e2';
-                        e.target.style.color = '#8B3A3A';
-                        e.target.style.borderColor = 'rgba(139, 58, 58, 0.30)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.target.style.background = '#f8f9fa';
-                        e.target.style.color = '#6b7280';
-                        e.target.style.borderColor = '#e5e7eb';
-                      }}
-                    >
-                      <i className="fas fa-sign-out-alt" style={{ marginRight: '8px' }}></i>
+                    <button className="gp-btn gp-btn--ghost" onClick={openLeaveModal}>
+                      <i className="fas fa-sign-out-alt" />
                       Leave Group
                     </button>
                     {isOwner && (
-                      <button
-                        onClick={openDeleteGroupModal}
-                        style={{
-                          background: 'linear-gradient(135deg,#8B3A3A,#B8860B)',
-                          color: '#FFFEF7',
-                          border: 'none',
-                          borderRadius: '25px',
-                          padding: '12px 24px',
-                          cursor: 'pointer',
-                          fontWeight: '600',
-                          fontSize: '14px',
-                          boxShadow: '0 4px 12px rgba(139,58,58,0.30)',
-                          transition: 'all 0.3s ease'
-                        }}
-                        onMouseOver={(e) => {
-                          e.target.style.transform = 'translateY(-2px)';
-                          e.target.style.boxShadow = '0 6px 16px rgba(139,58,58,0.40)';
-                        }}
-                        onMouseOut={(e) => {
-                          e.target.style.transform = 'translateY(0)';
-                          e.target.style.boxShadow = '0 4px 12px rgba(139,58,58,0.30)';
-                        }}
-                      >
-                        <i className="fas fa-trash" style={{ marginRight: 8 }}></i>
+                      <button className="gp-btn gp-btn--danger" onClick={openDeleteGroupModal}>
+                        <i className="fas fa-trash" />
                         Delete Group
                       </button>
                     )}
@@ -1100,114 +912,51 @@ export default function GroupPage() {
             </div>
 
             {/* Requests Section */}
-            <div style={{ marginTop: '32px', paddingTop: 0 }}>
-              <div style={{
-                height: 6,
-                borderRadius: '10px',
-                background: 'linear-gradient(90deg, #8B3A3A, #B8860B, #87A96B)',
-                marginBottom: '16px'
-              }} />
-              <h3 style={{ 
-                margin: '0 0 20px', 
-                fontSize: '20px', 
-                fontWeight: '700', 
-                color: '#111827',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                <i className="fas fa-envelope" style={{ color: '#B8860B' }}></i>
-                Requests & Invitations
+            <div style={{ marginTop: 28 }}>
+              <div className="gp-rule" />
+              <h3 className="gp-section-title">
+                <i className="fas fa-envelope" />
+                Requests &amp; Invitations
               </h3>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div style={{ 
-                  border: '2px solid rgba(184, 134, 11, 0.25)', 
-                  borderRadius: '12px', 
-                  padding: '20px',
-                  background: '#FFFEF7'
-                }}>
-                  <div style={{ fontWeight: '600', marginBottom: '12px', color: '#722F37', fontSize: '16px' }}>
-                    <i className="fas fa-user-clock" style={{ marginRight: '8px', color: '#B8860B' }}></i>
+
+              <div className="gp-requests-grid">
+                {/* Join Requests */}
+                <div className="gp-request-panel">
+                  <div className="gp-request-panel-title">
+                    <i className="fas fa-user-clock" />
                     Join Requests
                   </div>
-                  <div className="sm-scroll-requests" style={{ maxHeight: 260, overflowY: 'auto', paddingRight: 4 }}>
+                  <div className="gp-request-scroll">
                     {(group.joinRequests || []).length === 0 ? (
-                      <div style={{ color: '#64748b', fontSize: '14px', fontStyle: 'italic' }}>No pending requests</div>
+                      <div className="gp-empty-msg">No pending requests</div>
                     ) : (
                       (group.joinRequests || []).map(r => (
-                        <div key={r._id || r} style={{ 
-                          display: 'flex', 
-                          gap: '12px', 
-                          alignItems: 'center', 
-                          marginBottom: '16px',
-                          padding: '12px',
-                          background: 'white',
-                          borderRadius: '8px',
-                          border: '1px solid rgba(184, 134, 11, 0.25)'
-                        }}>
-                          <div style={{ 
-                            width: 36, 
-                            height: 36, 
-                            borderRadius: '50%', 
-                            background: 'linear-gradient(135deg, #8B4513 0%, #A0522D 20%, #CD853F 60%, #DEB887 90%, #F5DEB3 100%)', 
-                            color: '#FFFEF7', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            fontSize: '14px', 
-                            fontWeight: 'bold' 
-                          }}>
+                        <div key={r._id || r} className="gp-request-row">
+                          <div className="gp-member-avatar gp-member-avatar--member" style={{ width: 34, height: 34, fontSize: '0.85rem' }}>
                             {((r.username || '?')[0] || '?').toUpperCase()}
                           </div>
-                          <div style={{ flex: 1, fontWeight: '500' }}>{r.username || 'User'}</div>
+                          <div style={{ flex: 1, fontWeight: 600 }}>{r.username || 'User'}</div>
                           {isOwner && (
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              <button 
-                                onClick={async () => { 
-                                  await fetch(`${API_BASE}/api/groups/${id}/approve`, { 
-                                    method: 'POST', 
-                                    headers: { 'Content-Type': 'application/json' }, 
-                                    body: JSON.stringify({ requesterId: r._id || r, actorId: user._id }) 
-                                  }); 
-                                  await fetchGroup(); 
-                                }} 
-                                style={{ 
-                                  background: '#6B8E5A', 
-                                  color: '#FFFEF7', 
-                                  border: 'none', 
-                                  borderRadius: '6px', 
-                                  padding: '6px 12px', 
-                                  cursor: 'pointer',
-                                  fontSize: '12px',
-                                  fontWeight: '500'
+                            <div className="gp-request-actions">
+                              <button
+                                className="gp-btn gp-btn--sage"
+                                style={{ padding: '5px 10px', fontSize: '0.7rem' }}
+                                onClick={async () => {
+                                  await fetch(`${API_BASE}/api/groups/${id}/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requesterId: r._id || r, actorId: user._id }) });
+                                  await fetchGroup();
                                 }}
                               >
-                                <i className="fas fa-check" style={{ marginRight: '4px' }}></i>
-                                Approve
+                                <i className="fas fa-check" /> Approve
                               </button>
-                              <button 
-                                onClick={async () => { 
-                                  await fetch(`${API_BASE}/api/groups/${id}/decline`, { 
-                                    method: 'POST', 
-                                    headers: { 'Content-Type': 'application/json' }, 
-                                    body: JSON.stringify({ requesterId: r._id || r, actorId: user._id }) 
-                                  }); 
-                                  await fetchGroup(); 
-                                }} 
-                                style={{ 
-                                  background: '#8B3A3A', 
-                                  color: '#FFFEF7', 
-                                  border: 'none', 
-                                  borderRadius: '6px', 
-                                  padding: '6px 12px', 
-                                  cursor: 'pointer',
-                                  fontSize: '12px',
-                                  fontWeight: '500'
+                              <button
+                                className="gp-btn gp-btn--danger"
+                                style={{ padding: '5px 10px', fontSize: '0.7rem' }}
+                                onClick={async () => {
+                                  await fetch(`${API_BASE}/api/groups/${id}/decline`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requesterId: r._id || r, actorId: user._id }) });
+                                  await fetchGroup();
                                 }}
                               >
-                                <i className="fas fa-times" style={{ marginRight: '4px' }}></i>
-                                Decline
+                                <i className="fas fa-times" /> Decline
                               </button>
                             </div>
                           )}
@@ -1216,35 +965,22 @@ export default function GroupPage() {
                     )}
                   </div>
                 </div>
-                
-                <div style={{ 
-                  border: '2px solid rgba(114, 47, 55, 0.20)', 
-                  borderRadius: '12px', 
-                  padding: '20px',
-                  background: '#F9F4E8'
-                }}>
-                  <div style={{ fontWeight: '600', marginBottom: '12px', color: '#722F37', fontSize: '16px' }}>
-                    <i className="fas fa-paper-plane" style={{ marginRight: '8px', color: '#B8860B' }}></i>
+
+                {/* Sent Invitations */}
+                <div className="gp-request-panel">
+                  <div className="gp-request-panel-title">
+                    <i className="fas fa-paper-plane" />
                     Sent Invitations
                   </div>
-                  <div className="sm-scroll-requests" style={{ maxHeight: 260, overflowY: 'auto', paddingRight: 4 }}>
+                  <div className="gp-request-scroll">
                     {(group.invites || []).length === 0 ? (
-                      <div style={{ color: '#64748b', fontSize: '14px', fontStyle: 'italic' }}>No pending invites</div>
+                      <div className="gp-empty-msg">No pending invites</div>
                     ) : (
                       (group.invites || []).map(inv => (
-                        <div key={(inv.to?._id || inv.to) + '-' + (inv.from?._id || inv.from)} style={{ 
-                          display: 'flex', 
-                          gap: '12px', 
-                          alignItems: 'center', 
-                          marginBottom: '12px',
-                          padding: '12px',
-                          background: 'white',
-                          borderRadius: '8px',
-                          border: '1px solid rgba(114, 47, 55, 0.20)'
-                        }}>
+                        <div key={(inv.to?._id || inv.to) + '-' + (inv.from?._id || inv.from)} className="gp-request-row">
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: '500', fontSize: '14px' }}>To: {inv.to?.username || inv.to}</div>
-                            <div style={{ fontSize: '12px', color: '#64748b' }}>From: {inv.from?.username || inv.from}</div>
+                            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>To: {inv.to?.username || inv.to}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--gp-text-muted)' }}>From: {inv.from?.username || inv.from}</div>
                           </div>
                         </div>
                       ))
@@ -1256,17 +992,9 @@ export default function GroupPage() {
 
             {/* Invite Users Section */}
             {(isOwner || isModerator) && (
-              <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid rgba(139, 69, 19, 0.15)' }}>
-                <h4 style={{ 
-                  margin: '0 0 16px', 
-                  fontSize: '18px', 
-                  fontWeight: '600', 
-                  color: '#111827',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <i className="fas fa-user-plus" style={{ color: '#B8860B' }}></i>
+              <div className="gp-invite-section">
+                <h4 className="gp-section-title">
+                  <i className="fas fa-user-plus" />
                   Invite New Members
                 </h4>
                 <InviteSearch group={group} groupId={id} actorId={user?._id} onDone={fetchGroup} />
@@ -1275,22 +1003,11 @@ export default function GroupPage() {
           </div>
         )}
 
+
         {/* Tabbed Navigation */}
-        <div style={{
-          background: 'white',
-          borderRadius: '16px',
-          marginBottom: '24px',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-          border: '2px solid rgba(184, 134, 11, 0.25)',
-          overflow: 'hidden'
-        }}>
-          <div style={{ height: 6, background: 'linear-gradient(90deg, #8B3A3A, #B8860B, #87A96B)' }} />
-          
-          <div style={{
-            display: 'flex',
-            borderBottom: '1px solid rgba(184, 134, 11, 0.15)',
-            background: 'linear-gradient(135deg, rgba(184, 134, 11, 0.05), rgba(114, 47, 55, 0.05))'
-          }}>
+        <div className="gp-tabs-wrap">
+          <div className="gp-rule" style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} />
+          <div className="gp-tabs">
             {[
               { id: 'forum', label: 'Online Forum', icon: 'fas fa-comments' },
               { id: 'chat', label: 'Group Chat', icon: 'fas fa-comment-dots' },
@@ -1300,48 +1017,11 @@ export default function GroupPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                style={{
-                  flex: 1,
-                  padding: '20px 24px',
-                  background: activeTab === tab.id 
-                    ? 'linear-gradient(135deg, #B8860B, #DAA520)' 
-                    : 'transparent',
-                  color: activeTab === tab.id ? '#FFFEF7' : '#722F37',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  transition: 'all 0.3s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '10px',
-                  position: 'relative'
-                }}
-                onMouseOver={(e) => {
-                  if (activeTab !== tab.id) {
-                    e.target.style.background = 'rgba(184, 134, 11, 0.1)';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (activeTab !== tab.id) {
-                    e.target.style.background = 'transparent';
-                  }
-                }}
+                className={`gp-tab ${activeTab === tab.id ? 'active' : ''}`}
               >
                 <i className={tab.icon}></i>
                 {tab.label}
-                {activeTab === tab.id && (
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: '3px',
-                    background: '#FFFEF7',
-                    borderRadius: '3px 3px 0 0'
-                  }} />
-                )}
+
               </button>
             ))}
           </div>
@@ -1354,63 +1034,21 @@ export default function GroupPage() {
             <div>
             {/* Access Gate for Private Groups */}
             {isPrivate && !isMember && (
-              <div style={{
-                background: 'white',
-                borderRadius: '16px',
-                padding: '24px',
-                marginBottom: '24px',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-                border: '2px solid #fecaca'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <i className="fas fa-lock" style={{ color: '#dc2626', fontSize: 18 }}></i>
-                  <div style={{ color: '#111827' }}>
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>This group is private</div>
-                    <div style={{ color: '#64748b', fontSize: 14 }}>You need to join to view posts and members. Click "{isOwner ? 'Approve' : isMember ? 'Leave Group' : isPrivate ? 'Request to Join' : 'Join Group'}" to continue.</div>
-                  </div>
+              <div className="gp-access-gate">
+                <i className="fas fa-lock" style={{ color: 'var(--gp-crimson)', fontSize: '1.5rem' }} />
+                <div>
+                  <div style={{ fontWeight: 700, marginBottom: 4, fontFamily: 'var(--gp-font-display)' }}>This group is private</div>
+                  <div style={{ color: 'var(--gp-text-muted)', fontSize: '0.9rem' }}>You need to join to view posts and members. Click "{isOwner ? 'Approve' : isMember ? 'Leave Group' : isPrivate ? 'Request to Join' : 'Join Group'}" to continue.</div>
                 </div>
               </div>
             )}
 
             {/* Post Composer */}
             {isMember && (
-              <div style={{
-                background: 'white',
-                borderRadius: '16px',
-                padding: '24px',
-                marginBottom: '24px',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-                border: '2px solid rgba(184, 134, 11, 0.25)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{
-                  height: 6,
-                  borderRadius: 8,
-                  background: 'linear-gradient(90deg,#B8860B,#DAA520)',
-                  marginBottom: 16
-                }} />
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  right: 0,
-                  width: '80px',
-                  height: '80px',
-                  background: 'linear-gradient(135deg, transparent 50%, rgba(184, 134, 11, 0.06) 50%)',
-                }}></div>
-
+              <div className="gp-card gp-composer">
                 <form onSubmit={createPost}>
-                  <h3 style={{ 
-                    marginTop: 0, 
-                    marginBottom: '16px', 
-                    color: '#722F37',
-                    fontSize: '20px',
-                    fontWeight: '700',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <i className="fas fa-pen" style={{ color: '#B8860B' }}></i>
+                  <h3 className="gp-composer-title">
+                    <i className="fas fa-pen" />
                     Share with {group?.name}
                   </h3>
                   
@@ -1419,47 +1057,12 @@ export default function GroupPage() {
                     onChange={e => setComposer(e.target.value)} 
                     placeholder={`What's on your mind? Share with ${group?.name}...`} 
                     rows={4} 
-                    style={{ 
-                      width: '100%', 
-                      padding: '16px', 
-                      borderRadius: '12px', 
-                      border: '1px solid #e5e7eb', 
-                      marginBottom: '16px',
-                      fontSize: '16px',
-                      lineHeight: '1.5',
-                      resize: 'vertical',
-                      transition: 'all 0.3s ease'
-                    }} 
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#B8860B';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(184, 134, 11, 0.15)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = '#e5e7eb';
-                      e.target.style.boxShadow = 'none';
-                    }}
+                    className="gp-textarea"
                   />
                   
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <button 
-                      type="submit" 
-                      disabled={posting || !composer.trim()} 
-                      style={{ 
-                        background: posting || !composer.trim() 
-                          ? '#cbd5e1' 
-                          : 'linear-gradient(135deg, #722F37, #B8860B)', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '25px', 
-                        padding: '12px 24px', 
-                        cursor: posting || !composer.trim() ? 'not-allowed' : 'pointer',
-                        fontWeight: '600',
-                        fontSize: '14px',
-                        boxShadow: posting || !composer.trim() ? 'none' : '0 4px 12px rgba(184, 134, 11, 0.30)',
-                        transition: 'all 0.3s ease'
-                      }}
-                    >
-                      <i className={`fas fa-${posting ? 'spinner fa-spin' : 'paper-plane'}`} style={{ marginRight: '8px' }}></i>
+                  <div className="gp-composer-footer">
+                    <button type="submit" disabled={posting || !composer.trim()} className="gp-btn gp-btn--primary">
+                      <i className={`fas fa-${posting ? 'spinner fa-spin' : 'paper-plane'}`} />
                       {posting ? 'Posting...' : 'Share Post'}
                     </button>
                   </div>
@@ -1468,53 +1071,25 @@ export default function GroupPage() {
             )}
 
             {/* Post Filters */}
-            <div style={{
-              background: 'white',
-              borderRadius: '12px',
-              padding: '12px 16px',
-              marginBottom: '16px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-              border: '1px solid rgba(184, 134, 11, 0.20)'
-            }}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <strong style={{ color: '#722F37' }}>Filter:</strong>
-                {[
-                  { id: 'all', label: 'All' },
-                  { id: 'my', label: 'My Posts' },
-                  { id: 'liked', label: 'Liked' }
-                ].map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => setPostFilter(f.id)}
-                    style={{
-                      background: postFilter === f.id ? 'linear-gradient(135deg, #B8860B, #DAA520)' : '#f8fafc',
-                      color: postFilter === f.id ? '#FFFEF7' : '#64748b',
-                      border: `1px solid ${postFilter === f.id ? '#fbbf24' : '#e5e7eb'}`,
-                      borderRadius: 9999,
-                      padding: '6px 12px',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      fontWeight: 600
-                    }}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
+            <div className="gp-filter-bar">
+              <span className="gp-filter-label">Filter:</span>
+              {[
+                { id: 'all', label: 'All' },
+                { id: 'my', label: 'My Posts' },
+                { id: 'liked', label: 'Liked' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setPostFilter(f.id)}
+                  className={`gp-filter-btn ${postFilter === f.id ? 'active' : ''}`}
+                >
+                  {f.label}
+                </button>
+              ))}
             </div>
 
             {forumInfo && (
-              <div style={{
-                background: 'rgba(184,134,11,0.08)',
-                color: '#722F37',
-                border: '1px solid rgba(184,134,11,0.25)',
-                borderRadius: 10,
-                padding: '8px 12px',
-                marginBottom: 12,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8
-              }}>
+              <div className="gp-alert gp-alert--info" style={{ marginBottom: 12 }}>
                 <i className="fas fa-info-circle"></i>
                 {forumInfo}
               </div>
@@ -1522,61 +1097,21 @@ export default function GroupPage() {
 
             {/* Posts Feed */}
             {isPrivate && !isMember ? (
-              <div style={{
-                background: 'white',
-                borderRadius: '16px',
-                padding: '48px 32px',
-                textAlign: 'center',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-                border: '1px dashed #fecaca'
-              }}>
-                <i className="fas fa-user-lock" style={{ 
-                  fontSize: '48px', 
-                  color: '#dc2626', 
-                  marginBottom: '16px',
-                  opacity: 0.8
-                }}></i>
-                <h3 style={{ color: '#b91c1c', marginBottom: '8px', fontSize: '20px', fontWeight: '600' }}>
-                  Posts are visible to members only
-                </h3>
-                <p style={{ color: '#64748b', margin: 0, fontSize: '16px' }}>
-                  {user ? 'Request to join to see the content.' : 'Please log in and request to join to see the content.'}
-                </p>
+              <div className="gp-empty-state" style={{ borderColor: 'var(--gp-crimson)' }}>
+                <i className="fas fa-user-lock gp-empty-state-icon" style={{ color: 'var(--gp-crimson)' }} />
+                <h3 style={{ color: 'var(--gp-crimson)' }}>Posts are visible to members only</h3>
+                <p>{user ? 'Request to join to see the content.' : 'Please log in and request to join to see the content.'}</p>
               </div>
             ) : loading ? (
-              <div style={{
-                background: 'white',
-                borderRadius: '16px',
-                padding: '32px',
-                textAlign: 'center',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-                fontSize: '18px',
-                color: '#64748b'
-              }}>
-                <i className="fas fa-spinner fa-spin" style={{ marginRight: '12px', fontSize: '20px' }}></i>
+              <div className="gp-loading">
+                <i className="fas fa-spinner fa-spin" style={{ marginRight: '12px' }} />
                 Loading posts...
               </div>
             ) : feed.length === 0 ? (
-              <div style={{
-                background: 'white',
-                borderRadius: '16px',
-                padding: '48px 32px',
-                textAlign: 'center',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-                border: '1px dashed rgba(184, 134, 11, 0.25)'
-              }}>
-                <i className="fas fa-comments" style={{ 
-                  fontSize: '48px', 
-                  color: '#B8860B', 
-                  marginBottom: '16px',
-                  opacity: 0.8
-                }}></i>
-                <h3 style={{ color: '#722F37', marginBottom: '8px', fontSize: '20px', fontWeight: '600' }}>
-                  No posts yet
-                </h3>
-                <p style={{ color: '#64748b', margin: 0, fontSize: '16px' }}>
-                  Be the first to start a conversation in this group!
-                </p>
+              <div className="gp-empty-state">
+                <i className="fas fa-comments gp-empty-state-icon" style={{ color: 'var(--gp-gold)' }} />
+                <h3>No posts yet</h3>
+                <p>Be the first to start a conversation in this group!</p>
               </div>
             ) : (
               (feed || [])
@@ -1591,352 +1126,130 @@ export default function GroupPage() {
                   }
                   return true;
                 })
-                .map(p => (
-                <div key={p._id} style={{
-                  background: 'white',
-                  borderRadius: '16px',
-                  marginBottom: '20px',
-                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-                  border: '2px solid rgba(184, 134, 11, 0.25)',
-                  overflow: 'hidden',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.12)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.08)';
-                }}
-                >
-                  <div style={{ height: 4, background: 'linear-gradient(90deg,#8B3A3A,#B8860B)' }} />
-                  {/* Post Header */}
-                  <div style={{
-                    background: 'white',
-                    borderBottom: '1px solid rgba(0,0,0,0.08)',
-                    padding: '20px 24px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #8B4513 0%, #A0522D 20%, #CD853F 60%, #DEB887 90%, #F5DEB3 100%)',
-                        color: '#FFFEF7',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: '700',
-                        fontSize: '18px',
-                        position: 'relative',
-                        boxShadow: '0 4px 12px rgba(114, 47, 55, 0.20)'
-                      }}>
-                        {(p.author?.username?.[0] || '?').toUpperCase()}
-                        <div style={{
-                          position: 'absolute',
-                          top: '-2px',
-                          left: '-2px',
-                          right: '-2px',
-                          bottom: '-2px',
-                          borderRadius: '50%',
-                          border: '2px solid rgba(255, 255, 255, 0.7)',
-                          opacity: 0.5
-                        }}></div>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: '700', fontSize: '16px', color: '#111827' }}>
-                          {p.author?.username || 'User'}
+                .map(p => {
+                  return (
+                    <React.Fragment key={p._id}>
+                      <article className="post-card">
+                        <div className="post-card-dog-ear"></div>
+                        <div className="post-header">
+                          <div className="post-time">
+                            {(canModerate || (p.author?._id === user?._id)) && (
+                              <div className="post-actions-menu">
+                                <span className="your-post-badge">Manage Post</span>
+                                <div className="post-menu-dropdown">
+                                  <button className="post-menu-trigger"><i className="fas fa-ellipsis-h"></i></button>
+                                  <div className="post-menu-options">
+                                    {editingPost !== p._id && (p.author?._id === user?._id) && (
+                                      <button onClick={() => { setEditingPost(p._id); setEditPostContent(p.content || ''); }} className="post-menu-option edit">
+                                        <i className="fas fa-edit"></i><span>Edit Post</span>
+                                      </button>
+                                    )}
+                                    <button onClick={() => { setDeleteTarget({ type: 'post', id: p._id }); setShowDeleteModal(true); }} className="post-menu-option delete">
+                                      <i className="fas fa-trash"></i><span>Delete Post</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div style={{ fontSize: '13px', color: '#64748b' }}>
-                          {new Date(p.createdAt).toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Post Content */}
-                  <div style={{ padding: '24px' }}>
-                    {editingPost === p._id ? (
-                      <div style={{ marginBottom: 16 }}>
-                        <textarea
-                          value={editPostContent}
-                          onChange={e => setEditPostContent(e.target.value)}
-                          rows={4}
-                          style={{
-                            width: '100%', padding: 12, borderRadius: 12,
-                            border: '1px solid #e5e7eb', fontSize: 16
-                          }}
-                        />
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                          <button
-                            onClick={() => updatePost(p._id, editPostContent.trim())}
-                            disabled={!editPostContent.trim()}
-                            style={{
-                              background: !editPostContent.trim() ? '#e5e7eb' : 'linear-gradient(135deg, #6B8E5A, #87A96B)',
-                              color: !editPostContent.trim() ? '#9ca3af' : '#FFFEF7',
-                              border: 'none', borderRadius: 9999, padding: '8px 14px',
-                              cursor: !editPostContent.trim() ? 'not-allowed' : 'pointer', fontWeight: 600
-                            }}
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => { setEditingPost(null); setEditPostContent(''); }}
-                            style={{
-                              background: '#f8fafc', border: '1px solid #e5e7eb', color: '#111827',
-                              borderRadius: 9999, padding: '8px 14px', cursor: 'pointer', fontWeight: 600
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{
-                        marginBottom: '20px',
-                        color: '#111827',
-                        fontSize: '16px',
-                        lineHeight: '1.6'
-                      }}>
-                        {p.content}
-                      </div>
-                    )}
-
-                    {/* Post Actions */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      paddingTop: '16px',
-                      borderTop: '1px solid #f3f4f6'
-                    }}>
-                      <button
-                        onClick={() => likePost(p._id)}
-                        disabled={!user}
-                        style={{
-                          background: (() => {
-                            const uid = user?._id || user?.id;
-                            const liked = (p.likes || []).some(l => {
-                              const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
-                              return id === uid;
-                            });
-                            return liked ? '#fee2e2' : '#f8fafc';
-                          })(),
-                          border: (() => {
-                            const uid = user?._id || user?.id;
-                            const liked = (p.likes || []).some(l => {
-                              const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
-                              return id === uid;
-                            });
-                            return `1px solid ${liked ? '#fecaca' : '#e5e7eb'}`;
-                          })(),
-                          color: (() => {
-                            const uid = user?._id || user?.id;
-                            const liked = (p.likes || []).some(l => {
-                              const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
-                              return id === uid;
-                            });
-                            return liked ? '#dc2626' : '#64748b';
-                          })(),
-                          borderRadius: '25px',
-                          padding: '8px 16px',
-                          cursor: user ? 'pointer' : 'not-allowed',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'all 0.3s ease'
-                        }}
-                        onMouseOver={(e) => {
-                          if (user) {
-                            e.target.style.transform = 'scale(1.05)';
-                          }
-                        }}
-                        onMouseOut={(e) => {
-                          e.target.style.transform = 'scale(1)';
-                        }}
-                      >
-                        <i className={`fas fa-${p.likes?.includes(user?._id) ? 'heart' : 'heart'}`}></i>
-                        {p.likes?.length || 0} likes
-                      </button>
-
-                      <button
-                        onClick={() => toggleComments(p._id)}
-                        style={{
-                          background: '#f8fafc',
-                          border: '1px solid #e5e7eb',
-                          color: '#64748b',
-                          borderRadius: '25px',
-                          padding: '8px 16px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'all 0.3s ease'
-                        }}
-                        onMouseOver={(e) => {
-                          e.target.style.background = 'rgba(184, 134, 11, 0.08)';
-                          e.target.style.borderColor = '#B8860B';
-                          e.target.style.color = '#B8860B';
-                        }}
-                        onMouseOut={(e) => {
-                          e.target.style.background = '#f8fafc';
-                          e.target.style.borderColor = '#e5e7eb';
-                          e.target.style.color = '#64748b';
-                        }}
-                      >
-                        <i className="fas fa-comment"></i>
-                        Comments ({commentsByPost[p._id]?.length || p.commentCount || 0})
-                      </button>
-
-                      {(canModerate || (p.author?._id === user?._id)) && (
-                        <>
-                          {editingPost !== p._id && (p.author?._id === user?._id) && (
-                            <button
-                              onClick={() => { setEditingPost(p._id); setEditPostContent(p.content || ''); }}
-                              style={{
-                                background: '#f8fafc',
-                                border: '1px solid #e5e7eb',
-                                color: '#64748b',
-                                borderRadius: '25px',
-                                padding: '8px 16px',
-                                cursor: 'pointer',
-                                fontSize: '14px',
-                                fontWeight: '500',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                              }}
-                            >
-                              <i className="fas fa-pen"></i>
-                              Edit
-                            </button>
+                        <div className="post-content">
+                          {editingPost === p._id ? (
+                            <div className="edit-form-container">
+                              <textarea
+                                value={editPostContent}
+                                onChange={e => setEditPostContent(e.target.value)}
+                                className="themed-textarea"
+                                placeholder="Edit your post..."
+                                style={{ minHeight: '100px' }}
+                              />
+                              <div className="form-actions">
+                                <button onClick={() => updatePost(p._id, editPostContent.trim())} disabled={!editPostContent.trim()} className="btn-form-primary">Save</button>
+                                <button onClick={() => { setEditingPost(null); setEditPostContent(''); }} className="btn-form-secondary">Cancel</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p>{p.content}</p>
                           )}
-                        </>
-                      )}
+                        </div>
 
-                      <button
-                        onClick={() => setSharePostId(p._id)}
-                        style={{
-                          background: '#fef3c7',
-                          border: '1px solid #fbbf24',
-                          color: '#92400e',
-                          borderRadius: '25px',
-                          padding: '8px 16px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        <i className="fas fa-share"></i>
-                        Share
-                      </button>
+                        <div className="post-actions">
+                          {(() => {
+                            const viewerId = user?._id || user?.id;
+                            const isOwnPost = viewerId && ((p.author?._id || p.author) === viewerId);
+                            const isPostLiked = viewerId ? (p.likes || []).some(likeId => {
+                              const l = (typeof likeId === 'string' || typeof likeId === 'number') ? likeId : (likeId._id || likeId.id);
+                              return l === viewerId;
+                            }) : false;
+                            
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  className={`ink-stamp-btn ${isPostLiked ? 'stamped' : ''}`}
+                                  onClick={() => likePost(p._id)}
+                                  disabled={isOwnPost || !user}
+                                  style={{ opacity: isOwnPost ? 0.5 : 1, cursor: isOwnPost ? 'not-allowed' : 'pointer' }}
+                                >
+                                  {isPostLiked ? 'STAMPED' : 'STAMP'} {p.likes?.length > 0 ? `(${p.likes.length})` : '(0)'}
+                                </button>
+                                <button type="button" className="action-btn comment-btn" onClick={() => toggleComments(p._id)}>
+                                  <i className="far fa-comment"></i><span>{commentsByPost[p._id]?.length || p.commentCount || 0}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="action-btn share-btn"
+                                  onClick={() => setSharePostId(p._id)}
+                                >
+                                  <i className="fas fa-share"></i><span>Share</span>
+                                </button>
+                              </>
+                            );
+                          })()}
+                        </div>
+                        
+                        <div className="post-book-byline">
+                          <span>— written by <span className="post-author-link" style={{ cursor: 'pointer' }} onClick={() => navigate(`/profile/${p.author?._id}`)}>{p.author?.username || 'Unknown Author'}</span></span>
+                          <span> · </span>
+                          <span>{new Date(p.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
 
-                      {(canModerate || (p.author?._id === user?._id)) && (
-                        <button
-                          onClick={() => {
-                            setDeleteTarget({ type: 'post', id: p._id });
-                            setShowDeleteModal(true);
-                          }}
-                          style={{
-                            background: '#fee2e2',
-                            border: '1px solid #fecaca',
-                            color: '#dc2626',
-                            borderRadius: '25px',
-                            padding: '8px 16px',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            transition: 'all 0.3s ease'
-                          }}
-                          onMouseOver={(e) => {
-                            e.target.style.background = '#dc2626';
-                            e.target.style.color = 'white';
-                          }}
-                          onMouseOut={(e) => {
-                            e.target.style.background = '#fee2e2';
-                            e.target.style.color = '#dc2626';
-                          }}
-                        >
-                          <i className="fas fa-trash-alt"></i>
-                          Delete
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Comments Section */}
-                    {showComments[p._id] && (
-                      <CommentsSection
-                        postId={p._id}
-                        comments={commentsByPost[p._id] || []}
-                        onAddComment={addComment}
-                        onLikeComment={likeComment}
-                        onDeleteComment={deleteComment}
-                        onEditComment={editComment}
-                        canModerate={canModerate}
-                        currentUserId={user?._id}
-                      />
-                    )}
-                  </div>
-                </div>
-              ))
+                        {/* Comments Section */}
+                        {showComments[p._id] && (
+                          <div className="comments-section" style={{ padding: '0 20px 20px' }}>
+                            <CommentsSection
+                              postId={p._id}
+                              comments={commentsByPost[p._id] || []}
+                              onAddComment={addComment}
+                              onLikeComment={likeComment}
+                              onDeleteComment={deleteComment}
+                              onEditComment={editComment}
+                              canModerate={canModerate}
+                              currentUserId={user?._id}
+                            />
+                          </div>
+                        )}
+                      </article>
+                      <div className="torn-paper-divider"></div>
+                    </React.Fragment>
+                  );
+                })
             )}
             </div>
           )}
 
           {/* Group Chat Tab */}
           {activeTab === 'chat' && (
-            <div style={{
-              background: 'white',
-              borderRadius: '16px',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-              border: '2px solid rgba(184, 134, 11, 0.25)',
-              overflow: 'hidden',
-              height: '600px',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              <div style={{ height: 6, background: 'linear-gradient(90deg, #8B3A3A, #B8860B, #87A96B)' }} />
+            <div className="gp-card gp-chat-container">
+              <div className="gp-rule" />
               
               {/* Chat Header */}
-              <div style={{
-                padding: '20px 24px',
-                background: 'linear-gradient(135deg, #8B3A3A, #B8860B)',
-                color: '#FFFEF7',
-                borderBottom: '1px solid rgba(184, 134, 11, 0.15)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <h3 style={{
-                  fontWeight: '700',
-                  margin: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  fontSize: '18px'
-                }}>
-                  <i className="fas fa-comment-dots"></i>
+              <div className="gp-chat-header">
+                <h3 className="gp-chat-title">
+                  <i className="fas fa-comment-dots" />
                   Group Chat
-                  <span style={{
-                    fontSize: '12px',
-                    fontWeight: '400',
-                    opacity: 0.8,
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    padding: '2px 8px',
-                    borderRadius: '12px',
-                    marginLeft: 'auto'
-                  }}>
+                  <span className="gp-chat-member-count">
                     {group?.members?.length || 0} members
                   </span>
                 </h3>
@@ -1944,44 +1257,19 @@ export default function GroupPage() {
                   <button
                     onClick={fetchChatMessages}
                     disabled={loadingChat}
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.2)',
-                      border: '1px solid rgba(255, 255, 255, 0.3)',
-                      color: 'white',
-                      padding: '8px 12px',
-                      borderRadius: '20px',
-                      cursor: loadingChat ? 'not-allowed' : 'pointer',
-                      fontSize: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseOver={(e) => !loadingChat && (e.target.style.background = 'rgba(255, 255, 255, 0.3)')}
-                    onMouseOut={(e) => !loadingChat && (e.target.style.background = 'rgba(255, 255, 255, 0.2)')}
+                    className="gp-chat-refresh"
                   >
-                    <i className={`fas ${loadingChat ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`}></i>
+                    <i className={`fas ${loadingChat ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`} />
                     {loadingChat ? 'Refreshing...' : 'Refresh'}
                   </button>
                 )}
               </div>
 
-              {/* Debug banner removed for production */}
-
               {/* Status bar */}
               {isMember && lastRefresh && (
-                <div style={{
-                  padding: '8px 24px',
-                  background: 'rgba(184, 134, 11, 0.05)',
-                  borderBottom: '1px solid rgba(184, 134, 11, 0.1)',
-                  fontSize: '12px',
-                  color: '#64748b',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
+                <div className="gp-chat-status">
                   <span>
-                    <i className="fas fa-circle" style={{ color: '#22c55e', fontSize: '8px', marginRight: '6px' }}></i>
+                    <i className="fas fa-circle" style={{ color: '#22c55e', fontSize: 8, marginRight: 6 }} />
                     Connected
                   </span>
                   <span>
@@ -1991,365 +1279,166 @@ export default function GroupPage() {
               )}
 
               {!isMember ? (
-                <div style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'column',
-                  gap: '16px',
-                  color: '#64748b'
-                }}>
-                  <i className="fas fa-lock" style={{ fontSize: '48px', color: '#dc2626' }}></i>
+                <div className="gp-empty-state gp-empty-state--fill">
+                  <i className="fas fa-lock gp-empty-state-icon" style={{ color: 'var(--gp-crimson)' }} />
                   <h3>Join the group to participate in chat</h3>
                   <p>Group chat is available to members only</p>
                 </div>
               ) : (
                 <>
                   {/* Messages Area */}
-                  <div style={{
-                    flex: 1,
-                    padding: '16px 24px',
-                    overflowY: 'auto',
-                    background: '#f8fafc'
-                  }}>
+                  <div className="chat-main" style={{ background: 'transparent' }}>
                     {chatError && (
-                      <div style={{
-                        background: '#fee2e2',
-                        color: '#dc2626',
-                        padding: '12px 16px',
-                        borderRadius: '8px',
-                        marginBottom: '16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '14px'
-                      }}>
-                        <i className="fas fa-exclamation-triangle"></i>
+                      <div className="gp-alert gp-alert--error" style={{ marginBottom: 16 }}>
+                        <i className="fas fa-exclamation-triangle" />
                         {chatError}
                         <button
                           onClick={() => setChatError('')}
                           style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#dc2626',
-                            cursor: 'pointer',
-                            marginLeft: 'auto',
-                            fontSize: '16px'
+                            background: 'none', border: 'none', color: 'var(--gp-crimson)',
+                            cursor: 'pointer', marginLeft: 'auto', fontSize: '1rem'
                           }}
                         >
-                          <i className="fas fa-times"></i>
+                          <i className="fas fa-times" />
                         </button>
                       </div>
                     )}
-                    {loadingChat ? (
-                      <div style={{ textAlign: 'center', color: '#64748b', padding: '40px' }}>
-                        <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px', marginBottom: '12px' }}></i>
-                        <div>Loading messages...</div>
-                      </div>
-                    ) : chatMessages.length === 0 ? (
-                      <div style={{
-                        textAlign: 'center',
-                        color: '#64748b',
-                        padding: '40px 20px'
-                      }}>
-                        <i className="fas fa-comments" style={{ fontSize: '48px', marginBottom: '16px' }}></i>
-                        <h3>No messages yet</h3>
-                        <p>Be the first to start a conversation in this group chat!</p>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {chatMessages.map((msg, index) => {
-                          const currentMsgDate = msg.createdAt ? new Date(msg.createdAt) : null;
-                          const prevMsgDate = index > 0 && chatMessages[index - 1].createdAt 
-                            ? new Date(chatMessages[index - 1].createdAt) 
-                            : null;
-                          
-                          const showDateDivider = currentMsgDate && (!prevMsgDate || !isSameDay(currentMsgDate, prevMsgDate));
+                    
+                    <div className="messages-container">
+                      {loadingChat ? (
+                        <div className="gp-loading" style={{ height: '100%' }}>
+                          <i className="fas fa-spinner fa-spin" style={{ fontSize: '1.5rem', marginBottom: 12 }} />
+                          <div>Loading messages...</div>
+                        </div>
+                      ) : chatMessages.length === 0 ? (
+                        <div className="gp-empty-state gp-empty-state--fill">
+                          <i className="fas fa-comments gp-empty-state-icon" style={{ color: 'var(--gp-gold)' }} />
+                          <h3>No messages yet</h3>
+                          <p>Be the first to start a conversation in this group chat!</p>
+                        </div>
+                      ) : (
+                        <div className="messages-list">
+                          {chatMessages.map((msg, index) => {
+                            const currentMsgDate = msg.createdAt ? new Date(msg.createdAt) : null;
+                            const prevMsgDate = index > 0 && chatMessages[index - 1].createdAt 
+                              ? new Date(chatMessages[index - 1].createdAt) 
+                              : null;
+                            
+                            const showDateDivider = currentMsgDate && (!prevMsgDate || !isSameDay(currentMsgDate, prevMsgDate));
+                            const isOwn = (msg.sender?._id || msg.senderId) === user?._id;
 
-                          return (
-                            <React.Fragment key={msg._id}>
-                              {showDateDivider && (
-                                <div style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  margin: '16px 0',
-                                  textAlign: 'center'
-                                }}>
-                                  <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, rgba(184, 134, 11, 0.3), transparent)' }}></div>
-                                  <span style={{
-                                    padding: '4px 16px',
-                                    background: 'linear-gradient(135deg, rgba(184, 134, 11, 0.1), rgba(218, 165, 32, 0.1))',
-                                    border: '1px solid rgba(184, 134, 11, 0.3)',
-                                    borderRadius: '20px',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    color: '#B8860B',
-                                    margin: '0 12px',
-                                    whiteSpace: 'nowrap'
-                                  }}>
-                                    {formatDateLabel(currentMsgDate)}
-                                  </span>
-                                  <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, rgba(184, 134, 11, 0.3), transparent)' }}></div>
-                                </div>
-                              )}
-                              <div style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignSelf: (msg.sender?._id || msg.senderId) === user?._id ? 'flex-end' : 'flex-start',
-                                maxWidth: '70%',
-                                position: 'relative'
-                              }}>
-                                {editingChatMessage === (msg._id || msg.id) ? (
-                                  <div style={{
-                                    background: 'rgba(255, 255, 255, 0.95)',
-                                    padding: '12px',
-                                    borderRadius: '12px',
-                                    border: '2px solid #B8860B',
-                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-                                  }}>
-                                    <textarea
-                                      value={editChatContent}
-                                      onChange={(e) => setEditChatContent(e.target.value)}
-                                      style={{
-                                        width: '100%',
-                                        minHeight: '60px',
-                                        padding: '8px',
-                                        border: '1px solid #e5e7eb',
-                                        borderRadius: '8px',
-                                        fontSize: '14px',
-                                        resize: 'vertical',
-                                        fontFamily: 'inherit'
-                                      }}
-                                    />
-                                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' }}>
-                                      <button
-                                        onClick={() => handleSaveChatEdit(msg._id || msg.id)}
-                                        style={{
-                                          background: '#B8860B',
-                                          color: 'white',
-                                          border: 'none',
-                                          padding: '6px 16px',
-                                          borderRadius: '6px',
-                                          cursor: 'pointer',
-                                          fontSize: '12px',
-                                          fontWeight: '600'
-                                        }}
-                                      >
-                                        Save
-                                      </button>
-                                      <button
-                                        onClick={handleCancelChatEdit}
-                                        style={{
-                                          background: '#6b7280',
-                                          color: 'white',
-                                          border: 'none',
-                                          padding: '6px 16px',
-                                          borderRadius: '6px',
-                                          cursor: 'pointer',
-                                          fontSize: '12px',
-                                          fontWeight: '600'
-                                        }}
-                                      >
-                                        Cancel
-                                      </button>
-                                    </div>
+                            return (
+                              <React.Fragment key={msg._id}>
+                                {showDateDivider && (
+                                  <div className="date-divider">
+                                    <span className="date-label">{formatDateLabel(currentMsgDate)}</span>
                                   </div>
-                                ) : (
-                                  <>
-                                    <div style={{
-                                      background: (msg.sender?._id || msg.senderId) === user?._id 
-                                        ? 'linear-gradient(135deg, #B8860B, #DAA520)' 
-                                        : 'white',
-                                      color: (msg.sender?._id || msg.senderId) === user?._id ? 'white' : '#111827',
-                                      padding: '12px 16px',
-                                      borderRadius: '18px',
-                                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                                      border: (msg.sender?._id || msg.senderId) === user?._id ? 'none' : '1px solid #e5e7eb',
-                                      wordWrap: 'break-word'
-                                    }}>
-                                      {msg.content}
-                                    </div>
-                                    <div style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '8px',
-                                      marginTop: '4px',
-                                      justifyContent: (msg.sender?._id || msg.senderId) === user?._id ? 'flex-end' : 'flex-start'
-                                    }}>
+                                )}
+                                <div className={`message ${isOwn ? 'own-message' : 'other-message'}`}>
+                                  <div className="message-content">
+                                    {editingChatMessage === (msg._id || msg.id) ? (
                                       <div style={{
-                                        fontSize: '12px',
-                                        color: '#64748b'
+                                        background: 'rgba(255, 255, 255, 0.9)',
+                                        padding: '12px',
+                                        borderRadius: '12px',
+                                        border: '2px solid #6b3a2a',
+                                        marginBottom: '8px'
                                       }}>
-                                        {(msg.sender?._id || msg.senderId) === user?._id ? 'You' : (msg.sender?.username || 'User')} • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        <textarea
+                                          value={editChatContent}
+                                          onChange={(e) => setEditChatContent(e.target.value)}
+                                          style={{
+                                            width: '100%',
+                                            minHeight: '60px',
+                                            padding: '8px',
+                                            border: '1px solid #d4c4a8',
+                                            borderRadius: '6px',
+                                            fontSize: '14px',
+                                            fontFamily: "'Crimson Text', serif",
+                                            resize: 'vertical',
+                                            outline: 'none'
+                                          }}
+                                        />
+                                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' }}>
+                                          <button onClick={() => handleSaveChatEdit(msg._id || msg.id)} style={{ background: '#6b3a2a', color: '#fdfaf6', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>Save</button>
+                                          <button onClick={handleCancelChatEdit} style={{ background: '#b0a090', color: '#fdfaf6', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>Cancel</button>
+                                        </div>
                                       </div>
-                                      {(msg.sender?._id || msg.senderId) === user?._id && (
-                                        <div style={{ position: 'relative' }}>
+                                    ) : (
+                                      <div className="message-bubble">
+                                        {!isOwn && <strong style={{ display: 'block', fontSize: '0.8rem', opacity: 0.8, marginBottom: '2px' }}>{msg.sender?.username || 'User'}</strong>}
+                                        {msg.content}
+                                      </div>
+                                    )}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                      <div className="message-timestamp">
+                                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                      </div>
+                                      {isOwn && (
+                                        <div className="msg-menu-wrap">
                                           <button
+                                            type="button"
+                                            className="msg-menu-btn"
                                             onClick={() => setOpenChatMsgMenuId(prev => prev === (msg._id || msg.id) ? null : (msg._id || msg.id))}
-                                            style={{
-                                              background: 'none',
-                                              border: 'none',
-                                              color: '#64748b',
-                                              cursor: 'pointer',
-                                              padding: '4px 8px',
-                                              borderRadius: '4px',
-                                              fontSize: '12px',
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              transition: 'all 0.2s'
-                                            }}
-                                            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
-                                            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
-                                            title="Message options"
                                           >
-                                            <i className="fas fa-ellipsis-vertical"></i>
+                                            <i className="fas fa-ellipsis-vertical" />
                                           </button>
                                           {openChatMsgMenuId === (msg._id || msg.id) && (
-                                            <div style={{
-                                              position: 'absolute',
-                                              top: '100%',
-                                              right: 0,
-                                              background: 'white',
-                                              border: '1px solid #e5e7eb',
-                                              borderRadius: '8px',
-                                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                                              zIndex: 100,
-                                              minWidth: '120px',
-                                              marginTop: '4px'
-                                            }}>
+                                            <div className="msg-menu">
                                               {msg.type === 'text' && (
-                                                <button
-                                                  onClick={() => {
-                                                    handleEditChatMessage(msg);
-                                                    setOpenChatMsgMenuId(null);
-                                                  }}
-                                                  style={{
-                                                    width: '100%',
-                                                    padding: '10px 16px',
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    textAlign: 'left',
-                                                    cursor: 'pointer',
-                                                    fontSize: '13px',
-                                                    color: '#374151',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '8px',
-                                                    transition: 'background 0.2s'
-                                                  }}
-                                                  onMouseOver={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                                                  onMouseOut={(e) => e.currentTarget.style.background = 'none'}
-                                                >
-                                                  <i className="fas fa-pen" style={{ fontSize: '12px' }}></i>
-                                                  Edit
+                                                <button onClick={() => { handleEditChatMessage(msg); setOpenChatMsgMenuId(null); }} className="msg-menu-option edit">
+                                                  <i className="fas fa-pen" /> Edit
                                                 </button>
                                               )}
-                                              <button
-                                                onClick={() => {
-                                                  handleDeleteChatMessage(msg._id || msg.id);
-                                                  setOpenChatMsgMenuId(null);
-                                                }}
-                                                style={{
-                                                  width: '100%',
-                                                  padding: '10px 16px',
-                                                  background: 'none',
-                                                  border: 'none',
-                                                  borderTop: msg.type === 'text' ? '1px solid #e5e7eb' : 'none',
-                                                  textAlign: 'left',
-                                                  cursor: 'pointer',
-                                                  fontSize: '13px',
-                                                  color: '#dc2626',
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  gap: '8px',
-                                                  transition: 'background 0.2s'
-                                                }}
-                                                onMouseOver={(e) => e.currentTarget.style.background = '#fef2f2'}
-                                                onMouseOut={(e) => e.currentTarget.style.background = 'none'}
-                                              >
-                                                <i className="fas fa-trash" style={{ fontSize: '12px' }}></i>
-                                                Delete
+                                              <button onClick={() => { handleDeleteChatMessage(msg._id || msg.id); setOpenChatMsgMenuId(null); }} className="msg-menu-option delete">
+                                                <i className="fas fa-trash" /> Delete
                                               </button>
                                             </div>
                                           )}
                                         </div>
                                       )}
                                     </div>
-                                  </>
-                                )}
-                              </div>
-                            </React.Fragment>
-                          );
-                        })}
-                        <div ref={chatMessagesEndRef} />
-                      </div>
-                    )}
-                  </div>
+                                  </div>
+                                </div>
+                              </React.Fragment>
+                            );
+                          })}
+                          <div ref={chatMessagesEndRef} />
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Message Input */}
-                  <div style={{
-                    padding: '16px 24px',
-                    borderTop: '1px solid rgba(184, 134, 11, 0.15)',
-                    background: 'white'
-                  }}>
-                    <form onSubmit={sendChatMessage} style={{ display: 'flex', gap: '12px' }}>
-                      <input
-                        type="text"
-                        value={chatMessage}
-                        onChange={(e) => setChatMessage(e.target.value)}
-                        placeholder="Type your message..."
-                        disabled={sendingMessage}
-                        style={{
-                          flex: 1,
-                          padding: '12px 16px',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '25px',
-                          fontSize: '14px',
-                          outline: 'none',
-                          transition: 'all 0.2s ease',
-                          opacity: sendingMessage ? 0.7 : 1
-                        }}
-                        onFocus={(e) => {
-                          e.target.style.borderColor = '#B8860B';
-                          e.target.style.boxShadow = '0 0 0 3px rgba(184, 134, 11, 0.15)';
-                        }}
-                        onBlur={(e) => {
-                          e.target.style.borderColor = '#e5e7eb';
-                          e.target.style.boxShadow = 'none';
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            sendChatMessage(e);
-                          }
-                        }}
-                      />
-                      <button
-                        type="submit"
-                        disabled={!chatMessage.trim() || sendingMessage}
-                        style={{
-                          background: (!chatMessage.trim() || sendingMessage) ? '#e5e7eb' : 'linear-gradient(135deg, #B8860B, #DAA520)',
-                          color: (!chatMessage.trim() || sendingMessage) ? '#9ca3af' : 'white',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: '44px',
-                          height: '44px',
-                          cursor: (!chatMessage.trim() || sendingMessage) ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '16px',
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        {sendingMessage ? (
-                          <i className="fas fa-spinner fa-spin"></i>
-                        ) : (
-                          <i className="fas fa-paper-plane"></i>
-                        )}
-                      </button>
-                    </form>
+                    {/* Message Input */}
+                    <div className="message-input-container">
+                      <form onSubmit={sendChatMessage} className="message-form" style={{ display: 'flex', width: '100%', gap: '10px' }}>
+                        <input
+                          type="text"
+                          value={chatMessage}
+                          onChange={(e) => setChatMessage(e.target.value)}
+                          placeholder="Type your message..."
+                          disabled={sendingMessage}
+                          className="chat-input"
+                          style={{ flex: 1 }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              sendChatMessage(e);
+                            }
+                          }}
+                        />
+                        <button
+                          type="submit"
+                          disabled={!chatMessage.trim() || sendingMessage}
+                          className="send-btn"
+                        >
+                          {sendingMessage ? (
+                            <i className="fas fa-spinner fa-spin" />
+                          ) : (
+                            <i className="fas fa-paper-plane" />
+                          )}
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 </>
               )}
@@ -2361,48 +1450,22 @@ export default function GroupPage() {
             <div>
               {/* Active Session Banner */}
               {activeSession && activeSession.status === 'active' && (
-                <div style={{
-                  background: 'linear-gradient(135deg, #722F37, #B8860B)',
-                  borderRadius: '16px',
-                  padding: '20px 24px',
-                  marginBottom: '20px',
-                  color: '#FFFEF7',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '12px',
-                  boxShadow: '0 8px 24px rgba(114, 47, 55, 0.25)',
-                  animation: 'pdf-fade-in 0.4s ease'
-                }}>
+                <div className="gp-active-session-banner">
                   <div>
-                    <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.85, marginBottom: 4, fontWeight: 700 }}>
-                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#87a96b', marginRight: 8, animation: 'pdf-emoji-bounce 2s ease infinite' }} />
+                    <div className="gp-active-session-label">
+                      <span className="gp-active-session-indicator" />
                       Live Reading Session
                     </div>
-                    <div style={{ fontSize: '20px', fontWeight: 800 }}>
+                    <div className="gp-active-session-title">
                       📖 {activeSession.title || 'Untitled'}
                     </div>
-                    <div style={{ fontSize: '13px', opacity: 0.8, marginTop: 4 }}>
+                    <div className="gp-active-session-meta">
                       {activeSession.participants?.length || 0} reader{(activeSession.participants?.length || 0) !== 1 ? 's' : ''} • Page {activeSession.participants?.find(p => getEntityId(p.userId) === userId)?.currentPage || 1} / {activeSession.pageCount || '—'}
                     </div>
                   </div>
                   <button
                     onClick={() => navigate(`/groups/${id}/reading-room/${activeSession._id}`)}
-                    style={{
-                      background: 'rgba(255,255,255,0.2)',
-                      border: '2px solid rgba(255,255,255,0.4)',
-                      color: '#FFFEF7',
-                      borderRadius: '25px',
-                      padding: '12px 24px',
-                      cursor: 'pointer',
-                      fontWeight: 700,
-                      fontSize: '14px',
-                      transition: 'all 0.3s ease',
-                      backdropFilter: 'blur(8px)'
-                    }}
-                    onMouseOver={(e) => { e.target.style.background = 'rgba(255,255,255,0.35)'; }}
-                    onMouseOut={(e) => { e.target.style.background = 'rgba(255,255,255,0.2)'; }}
+                    className="gp-active-session-btn"
                   >
                     <i className="fas fa-book-open-reader" style={{ marginRight: 8 }} />
                     Join Reading Room →
@@ -2412,72 +1475,36 @@ export default function GroupPage() {
 
               {/* Upload Section (Owner/Mod only) */}
               {canModerate && (
-                <div style={{
-                  background: 'white',
-                  borderRadius: '16px',
-                  padding: '24px',
-                  marginBottom: '20px',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-                  border: '2px solid rgba(184, 134, 11, 0.25)',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{ height: 6, borderRadius: 8, background: 'linear-gradient(90deg, #B8860B, #DAA520)', marginBottom: 16 }} />
-                  <h3 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 700, color: '#722F37', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <i className="fas fa-cloud-arrow-up" style={{ color: '#B8860B' }} />
+                <div className="gp-card gp-library-upload">
+                  <div className="gp-library-upload-stripe" />
+                  <h3 className="gp-library-upload-title">
+                    <i className="fas fa-cloud-arrow-up gp-library-upload-icon" />
                     Upload Book PDF
                   </h3>
-                  <form onSubmit={handleUploadPdf} style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 200px' }}>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: 6 }}>Book Title (optional)</label>
+                  <form onSubmit={handleUploadPdf} className="gp-library-upload-form">
+                    <div className="gp-library-upload-field">
+                      <label>Book Title (optional)</label>
                       <input
                         type="text"
                         value={uploadTitle}
                         onChange={(e) => setUploadTitle(e.target.value)}
                         placeholder="Auto-detected from filename"
-                        style={{
-                          width: '100%',
-                          padding: '10px 14px',
-                          borderRadius: '10px',
-                          border: '1px solid #e5e7eb',
-                          fontSize: '14px',
-                          transition: 'border-color 0.2s',
-                        }}
-                        onFocus={(e) => { e.target.style.borderColor = '#B8860B'; e.target.style.boxShadow = '0 0 0 3px rgba(184,134,11,0.12)'; }}
-                        onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = 'none'; }}
+                        className="gp-input"
                       />
                     </div>
-                    <div style={{ flex: '1 1 200px' }}>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: 6 }}>PDF File</label>
+                    <div className="gp-library-upload-field">
+                      <label>PDF File</label>
                       <input
                         type="file"
                         accept=".pdf,application/pdf"
                         required
-                        style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          borderRadius: '10px',
-                          border: '1px solid #e5e7eb',
-                          fontSize: '13px',
-                          background: '#f9fafb',
-                        }}
+                        className="gp-input gp-input--file"
                       />
                     </div>
                     <button
                       type="submit"
                       disabled={uploadingBook}
-                      style={{
-                        background: uploadingBook ? '#cbd5e1' : 'linear-gradient(135deg, #722F37, #B8860B)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '25px',
-                        padding: '12px 24px',
-                        cursor: uploadingBook ? 'not-allowed' : 'pointer',
-                        fontWeight: 600,
-                        fontSize: '14px',
-                        boxShadow: uploadingBook ? 'none' : '0 4px 12px rgba(184,134,11,0.3)',
-                        transition: 'all 0.3s ease',
-                        whiteSpace: 'nowrap'
-                      }}
+                      className={`gp-btn gp-btn--primary gp-library-upload-btn ${uploadingBook ? 'gp-btn--disabled' : ''}`}
                     >
                       <i className={`fas fa-${uploadingBook ? 'spinner fa-spin' : 'upload'}`} style={{ marginRight: 8 }} />
                       {uploadingBook ? 'Uploading...' : 'Upload PDF'}
@@ -2487,47 +1514,34 @@ export default function GroupPage() {
               )}
 
               {/* Books Grid */}
-              <div style={{
-                background: 'white',
-                borderRadius: '16px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-                border: '2px solid rgba(184, 134, 11, 0.25)',
-                overflow: 'hidden'
-              }}>
-                <div style={{ height: 6, background: 'linear-gradient(90deg, #8B3A3A, #B8860B, #87A96B)' }} />
-                <div style={{
-                  padding: '20px 24px',
-                  background: 'linear-gradient(135deg, rgba(184,134,11,0.05), rgba(114,47,55,0.05))',
-                  borderBottom: '1px solid rgba(184,134,11,0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <i className="fas fa-book" style={{ color: '#B8860B' }} />
+              <div className="gp-card gp-library-grid">
+                <div className="gp-rule" />
+                <div className="gp-library-header">
+                  <h3 className="gp-library-title">
+                    <i className="fas fa-book gp-library-icon" />
                     Group Library
                   </h3>
-                  <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 600 }}>
+                  <span className="gp-library-count">
                     {libraryBooks.length} book{libraryBooks.length !== 1 ? 's' : ''}
                   </span>
                 </div>
 
-                <div style={{ padding: '20px 24px' }}>
+                <div className="gp-library-body">
                   {libraryLoading ? (
-                    <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
-                      <i className="fas fa-spinner fa-spin" style={{ fontSize: 24, marginBottom: 12, display: 'block' }} />
+                    <div className="gp-loading">
+                      <i className="fas fa-spinner fa-spin gp-loading-icon" />
                       Loading library...
                     </div>
                   ) : libraryBooks.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                      <i className="fas fa-book-open" style={{ fontSize: 40, color: '#d1d5db', marginBottom: 12, display: 'block' }} />
-                      <div style={{ color: '#64748b', fontSize: 15, fontWeight: 500 }}>No books in the library yet</div>
+                    <div className="gp-empty-state gp-empty-state--fill">
+                      <i className="fas fa-book-open gp-empty-state-icon" />
+                      <div>No books in the library yet</div>
                       {canModerate && (
-                        <div style={{ color: '#94a3b8', fontSize: 13, marginTop: 8 }}>Upload a PDF above to get started</div>
+                        <div className="gp-empty-state-sub">Upload a PDF above to get started</div>
                       )}
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+                    <div className="gp-books-grid">
                       {libraryBooks.map((book) => {
                         const isActiveBook = activeSession?.bookId?._id === book._id || getEntityId(activeSession?.bookId) === book._id;
                         const fileSizeKb = book.fileSize ? (book.fileSize / 1024).toFixed(0) : '—';
@@ -2536,77 +1550,42 @@ export default function GroupPage() {
                           : `${fileSizeKb} KB`;
 
                         return (
-                          <div key={book._id} style={{
-                            border: isActiveBook ? '2px solid #B8860B' : '1px solid rgba(184,134,11,0.2)',
-                            borderRadius: '14px',
-                            overflow: 'hidden',
-                            background: isActiveBook ? 'linear-gradient(135deg, rgba(184,134,11,0.06), rgba(255,254,247,0.98))' : '#FFFEF7',
-                            transition: 'all 0.3s ease',
-                            position: 'relative',
-                          }}>
+                          <div key={book._id} className={`gp-book-card ${isActiveBook ? 'gp-book-card--active' : ''}`}>
                             {isActiveBook && (
-                              <div style={{
-                                background: 'linear-gradient(90deg, #B8860B, #DAA520)',
-                                color: 'white',
-                                fontSize: '11px',
-                                fontWeight: 800,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.08em',
-                                padding: '4px 12px',
-                                textAlign: 'center'
-                              }}>
+                              <div className="gp-book-active-badge">
                                 📖 Active Session
                               </div>
                             )}
 
                             {/* Book cover placeholder */}
-                            <div style={{
-                              height: 100,
-                              background: 'linear-gradient(135deg, rgba(114,47,55,0.12), rgba(184,134,11,0.12))',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '2.5rem',
-                              color: 'rgba(114,47,55,0.3)',
-                            }}>
-                              📄
+                            <div className="gp-book-cover">
+                              <i className="fas fa-file-pdf" />
                             </div>
 
-                            <div style={{ padding: '14px 16px' }}>
-                              <div style={{ fontWeight: 700, fontSize: '15px', color: '#111827', marginBottom: 6, lineHeight: 1.3 }}>
+                            <div className="gp-book-info">
+                              <div className="gp-book-title">
                                 {book.title || book.originalName || 'Untitled'}
                               </div>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                                <span style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 99 }}>
+                              <div className="gp-book-meta">
+                                <span className="gp-book-tag">
                                   {fileSizeLabel}
                                 </span>
                                 {book.pageCount > 0 && (
-                                  <span style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 99 }}>
+                                  <span className="gp-book-tag">
                                     {book.pageCount} pages
                                   </span>
                                 )}
-                                <span style={{ fontSize: '12px', color: '#64748b', background: '#f1f5f9', padding: '3px 8px', borderRadius: 99 }}>
+                                <span className="gp-book-tag">
                                   {new Date(book.uploadedAt || book.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                 </span>
                               </div>
 
-                              <div style={{ display: 'flex', gap: 8 }}>
+                              <div className="gp-book-actions">
                                 {canModerate && !activeSession && (
                                   <button
                                     onClick={() => handleStartSession(book._id)}
                                     disabled={startingSession === book._id}
-                                    style={{
-                                      flex: 1,
-                                      background: startingSession === book._id ? '#cbd5e1' : 'linear-gradient(135deg, #B8860B, #DAA520)',
-                                      color: 'white',
-                                      border: 'none',
-                                      borderRadius: '10px',
-                                      padding: '8px 12px',
-                                      cursor: startingSession === book._id ? 'wait' : 'pointer',
-                                      fontWeight: 600,
-                                      fontSize: '12px',
-                                      transition: 'all 0.2s ease'
-                                    }}
+                                    className={`gp-book-btn gp-book-btn-start ${startingSession === book._id ? 'gp-btn--disabled' : ''}`}
                                   >
                                     <i className={`fas fa-${startingSession === book._id ? 'spinner fa-spin' : 'play'}`} style={{ marginRight: 6 }} />
                                     {startingSession === book._id ? 'Starting...' : 'Start Session'}
@@ -2615,54 +1594,23 @@ export default function GroupPage() {
                                 {isActiveBook && (
                                   <button
                                     onClick={() => navigate(`/groups/${id}/reading-room/${activeSession._id}`)}
-                                    style={{
-                                      flex: 1,
-                                      background: 'linear-gradient(135deg, #722F37, #B8860B)',
-                                      color: 'white',
-                                      border: 'none',
-                                      borderRadius: '10px',
-                                      padding: '8px 12px',
-                                      cursor: 'pointer',
-                                      fontWeight: 600,
-                                      fontSize: '12px',
-                                    }}
+                                    className="gp-book-btn gp-book-btn-join"
                                   >
-                                    <i className="fas fa-book-open-reader" style={{ marginRight: 6 }} />
+                                    <i className="fas fa-users" style={{ marginRight: 6 }} />
                                     Join Session
                                   </button>
                                 )}
                                 <button
                                   onClick={() => navigate(`/groups/${id}/library/${book._id}/read`)}
-                                  style={{
-                                    flex: 1,
-                                    background: 'linear-gradient(135deg, #475569, #1e293b)',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '10px',
-                                    padding: '8px 12px',
-                                    cursor: 'pointer',
-                                    fontWeight: 600,
-                                    fontSize: '12px',
-                                    transition: 'all 0.2s ease'
-                                  }}
+                                  className="gp-book-btn gp-book-btn-solo"
                                 >
-                                  <i className="fas fa-book-reader" style={{ marginRight: 6 }} />
+                                  <i className="fas fa-book-open" style={{ marginRight: 6 }} />
                                   Read Solo
                                 </button>
                                 {canModerate && (
                                   <button
                                     onClick={() => handleDeleteBook(book._id)}
-                                    style={{
-                                      background: 'rgba(139,58,58,0.08)',
-                                      color: '#8B3A3A',
-                                      border: 'none',
-                                      borderRadius: '10px',
-                                      padding: '8px 12px',
-                                      cursor: 'pointer',
-                                      fontSize: '12px',
-                                      fontWeight: 600,
-                                      transition: 'all 0.2s ease'
-                                    }}
+                                    className="gp-book-btn gp-book-btn--icon"
                                     title="Delete book"
                                   >
                                     <i className="fas fa-trash" />
@@ -2682,43 +1630,25 @@ export default function GroupPage() {
 
           {/* Members Tab */}
           {activeTab === 'members' && (
-            <div style={{
-              background: 'white',
-              borderRadius: '16px',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-              border: '2px solid rgba(184, 134, 11, 0.25)',
-              overflow: 'hidden'
-            }}>
-              <div style={{ height: 6, background: 'linear-gradient(90deg, #8B3A3A, #B8860B, #87A96B)' }} />
+            <div className="gp-card gp-members-tab">
+              <div className="gp-rule" />
               
               {/* Members Header */}
-              <div style={{
-                padding: '20px 24px',
-                background: 'linear-gradient(135deg, #8B3A3A, #B8860B)',
-                color: '#FFFEF7',
-                borderBottom: '1px solid rgba(184, 134, 11, 0.15)'
-              }}>
-                <h3 style={{
-                  fontWeight: '700',
-                  margin: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  fontSize: '18px'
-                }}>
-                  <i className="fas fa-users"></i>
+              <div className="gp-members-header">
+                <h3 className="gp-members-title">
+                  <i className="fas fa-users" />
                   {isPrivate && !isMember ? 'Members (Restricted)' : `Members (${group?.members?.length || 0})`}
                 </h3>
               </div>
 
               {/* Members Content */}
-              <div style={{ padding: '0' }}>
+              <div className="gp-members-body">
                 {isPrivate && !isMember ? (
-                  <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                  <div className="gp-empty-state gp-empty-state--fill">
                     Members list is visible to group members only.
                   </div>
                 ) : group?.members?.length ? (
-                  <div>
+                  <div className="gp-members-list">
                     {group.members.map(m => {
                       const isOwner = (group.createdBy?._id || group.createdBy) === (m._id || m);
                       const isMod = group.moderators?.some(mod => (mod._id || mod) === (m._id || m));
@@ -2727,63 +1657,25 @@ export default function GroupPage() {
                       const presenceLabel = formatPresenceLabel(presence);
 
                       return (
-                        <div key={m._id || m} style={{
-                          padding: '16px 20px',
-                          borderBottom: '1px solid rgba(0,0,0,0.05)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '12px',
-                          transition: 'all 0.3s ease'
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.background = 'rgba(184, 134, 11, 0.06)';
-                        }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.background = 'white';
-                        }}
-                        >
-                          <div style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: '50%',
-                            background: isOwner 
-                              ? 'linear-gradient(135deg, #dc2626, #b91c1c)' 
-                              : isMod 
-                                ? 'linear-gradient(135deg, #B8860B, #DAA520)' 
-                                : 'linear-gradient(135deg, #9333ea, #7c3aed)',
-                            color: 'white',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '14px',
-                            fontWeight: 'bold',
-                            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)'
-                          }}>
+                        <div key={m._id || m} className="gp-member-item">
+                          <div className={`gp-member-avatar ${isOwner ? 'gp-member-avatar--owner' : isMod ? 'gp-member-avatar--mod' : 'gp-member-avatar--member'}`}>
                             {((m.username || '?')[0] || '?').toUpperCase()}
                           </div>
                           
-                          <div style={{ flex: 1 }}>
-                            <div style={{ color: '#111827', fontSize: '15px', fontWeight: '600' }}>
+                          <div className="gp-member-info">
+                            <div className="gp-member-name">
                               {m.username || 'Member'}
                             </div>
-                            <div style={{
-                              color: isOwner ? '#8B3A3A' : isMod ? '#B8860B' : '#64748b',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}>
-                              <i className={`fas fa-${isOwner ? 'crown' : isMod ? 'shield-alt' : 'user'}`}></i>
+                            <div className={`gp-member-role ${isOwner ? 'gp-member-role--owner' : isMod ? 'gp-member-role--mod' : 'gp-member-role--member'}`}>
+                              <i className={`fas fa-${isOwner ? 'crown' : isMod ? 'shield-alt' : 'user'}`} />
                               {role}
                             </div>
-                            <div style={{ marginTop: 6 }}>
+                            <div className="gp-member-presence">
                               <span
                                 className={`presence-pill ${presence.isOnline ? 'online' : 'offline'}`}
                                 title={presence.isOnline ? 'User is online' : (presence.lastSeen ? `Last seen ${presence.lastSeen.toLocaleString()}` : 'User is offline')}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
                               >
-                                <span className={`status-dot ${presence.isOnline ? 'online' : 'offline'}`}></span>
+                                <span className={`status-dot ${presence.isOnline ? 'online' : 'offline'}`} />
                                 {presenceLabel}
                               </span>
                             </div>
@@ -2810,13 +1702,7 @@ export default function GroupPage() {
                                   await fetchGroup();
                                 }
                               }}
-                              style={{
-                                borderRadius: '6px',
-                                padding: '4px 8px',
-                                fontSize: '11px',
-                                border: '1px solid #e5e7eb',
-                                background: 'white'
-                              }}
+                              className="gp-input gp-input--small gp-member-role-select"
                             >
                               <option value="Member">Member</option>
                               <option value="Moderator">Moderator</option>
@@ -2825,15 +1711,8 @@ export default function GroupPage() {
 
                           {/* Owner Badge */}
                           {isOwner && m._id === user._id && (
-                            <span style={{
-                              color: '#dc2626',
-                              fontWeight: '600',
-                              fontSize: '12px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}>
-                              <i className="fas fa-crown"></i>
+                            <span className="gp-member-owner-badge">
+                              <i className="fas fa-crown" />
                               Owner
                             </span>
                           )}
@@ -2842,13 +1721,9 @@ export default function GroupPage() {
                     })}
                   </div>
                 ) : (
-                  <div style={{ padding: '32px 20px', textAlign: 'center' }}>
-                    <i className="fas fa-users" style={{
-                      fontSize: '32px',
-                      color: '#d1d5db',
-                      marginBottom: '12px'
-                    }}></i>
-                    <div style={{ color: '#64748b', fontSize: '14px' }}>No members yet</div>
+                  <div className="gp-empty-state gp-empty-state--fill">
+                    <i className="fas fa-users gp-empty-state-icon" />
+                    <div>No members yet</div>
                   </div>
                 )}
               </div>
@@ -2858,61 +1733,18 @@ export default function GroupPage() {
         {/* Share Modal */}
         {sharePostId && createPortal(
           (
-            <div
-              className="modal-backdrop"
-              role="dialog"
-              aria-modal="true"
-              onClick={() => setSharePostId(null)}
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(0,0,0,0.45)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 2147483647,
-                padding: '16px',
-                visibility: 'visible',
-                opacity: 1,
-                pointerEvents: 'auto'
-              }}
-            >
-              <div
-                className="modal-content"
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  position: 'relative',
-                  background: 'white',
-                  borderRadius: '12px',
-                  width: '100%',
-                  maxWidth: '520px',
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
-                  overflow: 'hidden',
-                  zIndex: 2147483647,
-                  visibility: 'visible',
-                  opacity: 1,
-                  transform: 'none'
-                }}
-              >
-                <div className="modal-header" style={{
-                  padding: '16px 20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  background: 'linear-gradient(135deg, #8B3A3A, #B8860B)',
-                  color: '#FFFEF7'
-                }}>
-                  <h3 style={{ margin: 0 }}><i className="fas fa-share"></i> Share Post</h3>
-                  <button className="modal-close-btn" onClick={() => setSharePostId(null)} style={{
-                    background: 'transparent', border: 'none', color: '#FFFEF7', cursor: 'pointer'
-                  }}>
-                    <i className="fas fa-times"></i>
+            <div className="gp-modal-backdrop" onClick={() => setSharePostId(null)}>
+              <div className="gp-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="gp-modal-header">
+                  <h3><i className="fas fa-share" /> Share Post</h3>
+                  <button className="gp-modal-close" onClick={() => setSharePostId(null)}>
+                    <i className="fas fa-times" />
                   </button>
                 </div>
-                <div className="modal-body" style={{ padding: '16px 20px' }}>
-                  <div style={{ marginBottom: '10px' }}>
+                <div className="gp-modal-body">
+                  <div style={{ marginBottom: 16 }}>
                     <button
-                      className="btn btn-copy-link"
+                      className="gp-btn gp-btn--primary"
                       onClick={() => {
                         const url = `${window.location.origin}/groups/${id}?post=${sharePostId}`;
                         navigator.clipboard.writeText(url);
@@ -2920,42 +1752,31 @@ export default function GroupPage() {
                         setForumInfo('Post link copied to clipboard');
                         setTimeout(() => setForumInfo(''), 2000);
                       }}
-                      style={{
-                        background: 'linear-gradient(135deg, #B8860B, #DAA520)',
-                        color: '#FFFEF7',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '10px 14px',
-                        cursor: 'pointer',
-                        fontWeight: 600
-                      }}
+                      style={{ width: '100%' }}
                     >
                       Copy Link
                     </button>
                   </div>
-                  <h4 style={{ margin: '10px 0' }}>Send to a conversation</h4>
-                  <div className="user-list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <h4 style={{ margin: '16px 0 12px', color: 'var(--gp-text)' }}>Send to a conversation</h4>
+                  <div className="gp-share-user-list" style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
                     {conversations.map(c => {
                       const uid = user?._id || user?.id;
                       const other = (c.members || []).find(m => (m?._id || m) !== uid);
                       const fullName = other?.profile?.fullName || other?.username || 'User';
                       return (
-                        <div key={c._id} className="user-result-item" style={{
+                        <div key={c._id} className="gp-share-user-item" style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '8px 0', borderBottom: '1px solid #f1f5f9'
+                          padding: '8px', background: 'var(--gp-cream)', borderRadius: 8,
+                          border: '1px solid var(--gp-border)'
                         }}>
-                          <div className="user-info" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div className="user-avatar">
-                              <div className="avatar-circle" style={{ background: '#2e3192', width: 36, height: 36, borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {c.type === 'group' ? <i className="fas fa-users"></i> : (fullName[0] || 'U').toUpperCase()}
-                              </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ background: 'var(--gp-crimson)', width: 36, height: 36, borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {c.type === 'group' ? <i className="fas fa-users" /> : (fullName[0] || 'U').toUpperCase()}
                             </div>
-                            <div className="user-details">
-                              <span className="user-name">{c.type === 'group' ? (c.name || 'Group') : fullName}</span>
-                            </div>
+                            <span style={{ fontWeight: 600, color: 'var(--gp-text)' }}>{c.type === 'group' ? (c.name || 'Group') : fullName}</span>
                           </div>
                           <button
-                            className="btn btn-primary"
+                            className={`gp-btn ${shareLoading ? 'gp-btn--disabled' : 'gp-btn--sage'}`}
                             disabled={shareLoading}
                             onClick={async () => {
                               try {
@@ -2978,15 +1799,6 @@ export default function GroupPage() {
                                 setShareLoading(false);
                               }
                             }}
-                            style={{
-                              background: 'linear-gradient(135deg, #6B8E5A, #87A96B)',
-                              color: '#FFFEF7',
-                              border: 'none',
-                              borderRadius: '8px',
-                              padding: '8px 12px',
-                              cursor: 'pointer',
-                              fontWeight: 600
-                            }}
                           >
                             {shareLoading ? 'Sharing…' : 'Send Link'}
                           </button>
@@ -3007,8 +1819,8 @@ export default function GroupPage() {
             setDeleteTarget(null);
           }}
           onConfirm={confirmDelete}
-          title={'Delete Post'}
-          message={'Are you sure you want to delete this post? This action cannot be undone.'}
+          title={deleteTarget?.type === 'post' ? 'Delete Post' : 'Delete Comment'}
+          message={deleteTarget?.type === 'post' ? 'Are you sure you want to delete this post? This action cannot be undone.' : 'Are you sure you want to delete this comment? This action cannot be undone.'}
           confirmText="Delete"
           cancelText="Cancel"
           type="danger"
@@ -3129,105 +1941,7 @@ export default function GroupPage() {
           </div>, document.body)}
 
       </div>
-      {/* Share Modal */}
-      {sharePostId && createPortal(
-        (
-          <div
-            className="modal-backdrop"
-            role="dialog"
-            aria-modal="true"
-            onClick={() => setSharePostId(null)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2147483647, padding: '16px' }}
-          >
-            <div
-              className="modal-content"
-              onClick={(e) => e.stopPropagation()}
-              style={{ position: 'relative', background: 'white', borderRadius: '12px', width: '100%', maxWidth: '520px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)', overflow: 'hidden' }}
-            >
-              <div className="modal-header">
-                <h3><i className="fas fa-share"></i> Share Post</h3>
-                <button className="modal-close-btn" onClick={() => setSharePostId(null)}>
-                  <i className="fas fa-times"></i>
-                </button>
-              </div>
-              <div className="modal-body">
-                <div style={{ marginBottom: '10px' }}>
-                  <button
-                    className="btn btn-copy-link"
-                    onClick={() => {
-                      const url = `${window.location.origin}/posts/${sharePostId}`;
-                      navigator.clipboard.writeText(url);
-                      setSharePostId(null);
-                    }}
-                  >
-                    Copy Link
-                  </button>
-                </div>
-                <h4>Send to a conversation</h4>
-                <div className="user-list">
-                  {conversations.map(c => {
-                    const uid = user?._id || user?.id;
-                    const other = (c.members || []).find(m => (m?._id || m) !== uid);
-                    const fullName = other?.profile?.fullName || other?.username || 'User';
-                    return (
-                      <div key={c._id} className="user-result-item">
-                        <div className="user-info">
-                          <div className="user-avatar">
-                            <div className="avatar-circle" style={{ background: '#2e3192' }}>
-                              {c.type === 'group' ? <i className="fas fa-users"></i> : (fullName[0] || 'U').toUpperCase()}
-                            </div>
-                          </div>
-                          <div className="user-details">
-                            <span className="user-name">{c.type === 'group' ? (c.name || 'Group') : fullName}</span>
-                          </div>
-                        </div>
-                        <button
-                          className="btn btn-primary"
-                          disabled={shareLoading}
-                          onClick={async () => {
-                            try {
-                              setShareLoading(true);
-                              const url = `${window.location.origin}/posts/${sharePostId}`;
-                              const senderId = user?._id || user?.id;
-                              const post = (feed || []).find(p => p._id === sharePostId);
-                              const authorName = post?.author?.profile?.fullName || post?.author?.username || 'the author';
-                              const label = `Check out this post by ${authorName}`;
-                              const content = `LINKMSG::${label}::${url}`;
-                              const resp = await fetch(`${API_BASE}/api/chat/messages/${c._id}`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ senderId, content })
-                              });
-                              if (resp.ok) {
-                                setSharePostId(null);
-                              }
-                            } finally {
-                              setShareLoading(false);
-                            }
-                          }}
-                        >
-                          {shareLoading ? 'Sharing…' : 'Send Link'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        ), document.body)}
 
-      {/* Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={showDeleteModal}
-        onClose={() => { setShowDeleteModal(false); setDeleteTarget(null); }}
-        onConfirm={confirmDelete}
-        title={deleteTarget?.type === 'post' ? 'Delete Post' : 'Delete'}
-        message={deleteTarget?.type === 'post' ? 'Are you sure you want to delete this post? This action cannot be undone.' : 'Are you sure you want to delete?'}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
-      />
 
       {/* Chat Message Delete Confirmation Modal */}
       <ConfirmationModal

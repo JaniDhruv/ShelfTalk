@@ -91,7 +91,7 @@ export default function Discover() {
     if (tab === 'users' || tab === 'clubs') {
       setActiveTab(tab);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // When switching tabs via UI, update the query param for deep-linking
@@ -256,9 +256,9 @@ export default function Discover() {
       if (clubOwnership === 'joined') list = list.filter(isMember);
       if (clubOwnership === 'not_joined') list = list.filter(c => !isMember(c) && !isOwner(c));
     }
-    if (clubSort === 'name') list.sort((a,b) => (a.name||'').localeCompare(b.name||''));
-    if (clubSort === 'members') list.sort((a,b) => (b.members?.length||0) - (a.members?.length||0));
-    if (clubSort === 'recent') list.sort((a,b) => new Date(b.createdAt||b.updatedAt||0) - new Date(a.createdAt||a.updatedAt||0));
+    if (clubSort === 'name') list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    if (clubSort === 'members') list.sort((a, b) => (b.members?.length || 0) - (a.members?.length || 0));
+    if (clubSort === 'recent') list.sort((a, b) => new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0));
     return list;
   }, [bookClubs, clubSearch, clubFilterVisibility, clubOwnership, clubSort, user]);
 
@@ -491,18 +491,18 @@ export default function Discover() {
                       <div className="sm-card-top" />
                       <div className="sm-card-body">
                         <div className="sm-card-accent" />
-                          <div className="sm-card-header">
-                            <div className="sm-avatar-wrap">
-                              <div className="sm-avatar">{initials}</div>
-                              <div className={`sm-status ${presence.isOnline ? 'active' : 'inactive'}`} />
-                            </div>
-                            <div className="sm-header-meta">
-                              <span className="sm-role-badge"><i className="fas fa-user"></i> {u.username || displayName}</span>
-                              <span className={`presence-pill ${presence.isOnline ? 'online' : 'offline'}`} title={presence.isOnline ? 'User is online' : (presence.lastSeen ? `Last seen ${presence.lastSeen.toLocaleString()}` : 'User is offline')}>
-                                <span className={`status-dot ${presence.isOnline ? 'online' : 'offline'}`} />
-                                {statusLabel}
-                              </span>
-                            </div>
+                        <div className="sm-card-header">
+                          <div className="sm-avatar-wrap">
+                            <div className="sm-avatar">{initials}</div>
+                            <div className={`sm-status ${presence.isOnline ? 'active' : 'inactive'}`} />
+                          </div>
+                          <div className="sm-header-meta">
+                            <span className="sm-role-badge"><i className="fas fa-user"></i> {u.username || displayName}</span>
+                            <span className={`presence-pill ${presence.isOnline ? 'online' : 'offline'}`} title={presence.isOnline ? 'User is online' : (presence.lastSeen ? `Last seen ${presence.lastSeen.toLocaleString()}` : 'User is offline')}>
+                              <span className={`status-dot ${presence.isOnline ? 'online' : 'offline'}`} />
+                              {statusLabel}
+                            </span>
+                          </div>
                         </div>
                         {(u.profile?.fullName || location) && (
                           <div className="sm-details">
@@ -535,7 +535,7 @@ export default function Discover() {
                       </div>
                       <div className="sm-card-footer">
                         <div className="sm-actions">
-                          <button className="sm-btn outline" onClick={() => window.open(`/profile/${u._id}`, '_blank')}><i className="fas fa-user"></i> View Profile</button>
+                          <button className="sm-btn outline" onClick={() => navigate(`/profile/${u._id}`)}><i className="fas fa-user"></i> View Profile</button>
                           <button
                             className={`sm-btn ghost ${isGuest ? 'guest-locked' : ''}`}
                             onClick={() => {
@@ -701,7 +701,7 @@ export default function Discover() {
 
               <div className="sm-group-cards-grid">
                 {clubsLoading ? (
-                  [1,2,3,4].map(i => (
+                  [1, 2, 3, 4].map(i => (
                     <div key={i} className="sm-group-card-loading">
                       <div className="sm-loading-title" />
                       <div className="sm-loading-description" />

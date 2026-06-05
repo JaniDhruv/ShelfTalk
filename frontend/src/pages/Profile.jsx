@@ -39,7 +39,7 @@ export default function Profile() {
       if (!resolvedId) return;
       setIsLoading(true);
       try {
-  const resp = await fetch(`${API_BASE}/api/profiles/${resolvedId}`);
+        const resp = await fetch(`${API_BASE}/api/profiles/${resolvedId}`);
         if (!resp.ok) throw new Error('Failed to load profile');
         const data = await resp.json();
         const normalized = {
@@ -89,7 +89,7 @@ export default function Profile() {
 
     (async () => {
       try {
-  const resp = await fetch(`${API_BASE}/api/posts`);
+        const resp = await fetch(`${API_BASE}/api/posts`);
         if (!resp.ok) return;
         const all = await resp.json();
         const mine = (all || [])
@@ -106,7 +106,7 @@ export default function Profile() {
 
     (async () => {
       try {
-  const resp = await fetch(`${API_BASE}/api/groups`);
+        const resp = await fetch(`${API_BASE}/api/groups`);
         if (!resp.ok) return;
         const groups = await resp.json();
         const mine = (groups || []).filter(g => (g.members || []).some(m => {
@@ -147,8 +147,8 @@ export default function Profile() {
 
   const favoriteGenres = Array.isArray(profileData?.favoriteGenres)
     ? profileData.favoriteGenres
-        .map((genre) => (typeof genre === 'string' ? genre : genre?.name))
-        .filter(Boolean)
+      .map((genre) => (typeof genre === 'string' ? genre : genre?.name))
+      .filter(Boolean)
     : [];
 
   const favoriteAuthorsList = Array.isArray(profileData?.favoriteAuthors)
@@ -184,27 +184,27 @@ export default function Profile() {
     }).length;
     return { post, commentCount };
   });
-  const topPost = postCommentCounts.reduce((max, curr) => 
-    curr.commentCount > (max?.commentCount || 0) ? curr : max, 
+  const topPost = postCommentCounts.reduce((max, curr) =>
+    curr.commentCount > (max?.commentCount || 0) ? curr : max,
     { commentCount: 0 }
   );
 
   const quickStats = [
     { key: 'posts', label: 'Posts', value: userPosts.length, icon: 'fas fa-pen', clickable: false },
     { key: 'clubs', label: 'Clubs', value: userGroups.length, icon: 'fas fa-users', clickable: false },
-    { 
-      key: 'moderating', 
-      label: 'Moderating', 
-      value: moderatorCount, 
-      icon: 'fas fa-shield-alt', 
-      clickable: false 
+    {
+      key: 'moderating',
+      label: 'Moderating',
+      value: moderatorCount,
+      icon: 'fas fa-shield-alt',
+      clickable: false
     },
-    { 
-      key: 'topPost', 
-      label: 'Top Post', 
+    {
+      key: 'topPost',
+      label: 'Top Post',
       value: topPost.commentCount > 0 ? `${topPost.commentCount} comments` : '0 comments',
       preview: topPost.post?.content ? topPost.post.content.substring(0, 50) + '...' : null,
-      icon: 'fas fa-fire', 
+      icon: 'fas fa-fire',
       clickable: topPost.commentCount > 0,
       postId: topPost.post?._id
     },
@@ -294,7 +294,7 @@ export default function Profile() {
         languagesSpoken: editForm.languagesSpoken.split(',').map(l => l.trim()).filter(l => l),
         favoriteGenres: editForm.favoriteGenres.split(',').map(g => ({ name: g.trim() })).filter(g => g.name),
       };
-  const resp = await fetch(`${API_BASE}/api/profiles/${resolvedId}`, {
+      const resp = await fetch(`${API_BASE}/api/profiles/${resolvedId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -307,7 +307,7 @@ export default function Profile() {
         fullName: updated.fullName,
         bio: updated.bio,
         location: updated.location,
-    isPublic: updated.isPublic,
+        isPublic: updated.isPublic,
         favoriteGenres: updated.favoriteGenres || prev.favoriteGenres,
         favoriteAuthors: updated.favoriteAuthors || prev.favoriteAuthors,
         languagesSpoken: updated.languagesSpoken || prev.languagesSpoken,
@@ -632,7 +632,7 @@ export default function Profile() {
               const displayValue = typeof stat.value === 'number' ? stat.value : stat.value;
               const isClickable = stat.clickable && stat.postId;
               const cardClasses = `quick-stat-card ${isClickable ? 'clickable' : ''}`;
-              
+
               const handleClick = () => {
                 if (isClickable) {
                   navigate(`/posts/${stat.postId}`);
@@ -640,8 +640,8 @@ export default function Profile() {
               };
 
               return (
-                <div 
-                  key={stat.key} 
+                <div
+                  key={stat.key}
                   className={cardClasses}
                   onClick={handleClick}
                   style={{ cursor: isClickable ? 'pointer' : 'default' }}
@@ -860,7 +860,7 @@ export default function Profile() {
                 </section>
               </div>
             )}
-            
+
             {activeTab === 'diary' && (
               <DiaryTab userId={profileData.id} user={profileData} />
             )}

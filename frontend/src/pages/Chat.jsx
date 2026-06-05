@@ -20,25 +20,25 @@ const formatDateLabel = (date) => {
   if (!(date instanceof Date) || isNaN(date.getTime())) {
     return '';
   }
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  
+
   const messageDate = new Date(date);
   messageDate.setHours(0, 0, 0, 0);
-  
+
   if (messageDate.getTime() === today.getTime()) {
     return 'Today';
   } else if (messageDate.getTime() === yesterday.getTime()) {
     return 'Yesterday';
   } else {
-    return messageDate.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: messageDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined 
+    return messageDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: messageDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
     });
   }
 };
@@ -48,35 +48,35 @@ const formatChatTime = (date) => {
   if (!date) return '';
   const messageDate = new Date(date);
   if (isNaN(messageDate.getTime())) return '';
-  
+
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  
+
   const msgDate = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate());
-  
+
   // Today - show time
   if (msgDate.getTime() === today.getTime()) {
     return messageDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   }
-  
+
   // Yesterday
   if (msgDate.getTime() === yesterday.getTime()) {
     return 'Yesterday';
   }
-  
+
   // This week - show day name
   const daysDiff = Math.floor((today - msgDate) / (1000 * 60 * 60 * 24));
   if (daysDiff < 7) {
     return messageDate.toLocaleDateString('en-US', { weekday: 'short' });
   }
-  
+
   // This year - show month and day
   if (messageDate.getFullYear() === now.getFullYear()) {
     return messageDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
-  
+
   // Older - show full date
   return messageDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
@@ -125,7 +125,7 @@ const formatLastMessage = (chat, currentUserId) => {
   let msg = chat.lastMessage;
   const lastSenderId = chat.lastSender?._id || chat.lastSender;
   const isOwnMessage = lastSenderId === currentUserId;
-  
+
   let prefix = null;
   let text = msg;
   let icon = null;
@@ -144,7 +144,7 @@ const formatLastMessage = (chat, currentUserId) => {
   // Detect message type
   const isImageMsg = chat.lastMessageType === 'image';
   const isFileMsg = chat.lastMessageType === 'file';
-  
+
   // Check if message contains a link
   const urlRegex = /(https?:\/\/[^\s]+)/;
   const isLinkMsg = msg.startsWith('LINKMSG::') || urlRegex.test(msg);
@@ -170,7 +170,7 @@ const formatLastMessage = (chat, currentUserId) => {
   } else {
     // Text message - always show prefix for consistency
     prefix = getSenderName();
-    
+
     // Truncate long messages
     if (text.length > 35) {
       text = text.substring(0, 35) + '...';
@@ -938,10 +938,10 @@ export default function Chat() {
               <div className="messages-list">
                 {messages.map((msg, index) => {
                   const currentMsgDate = msg.createdAt ? new Date(msg.createdAt) : null;
-                  const prevMsgDate = index > 0 && messages[index - 1].createdAt 
-                    ? new Date(messages[index - 1].createdAt) 
+                  const prevMsgDate = index > 0 && messages[index - 1].createdAt
+                    ? new Date(messages[index - 1].createdAt)
                     : null;
-                  
+
                   const showDateDivider = currentMsgDate && (!prevMsgDate || !isSameDay(currentMsgDate, prevMsgDate));
 
                   return (
@@ -954,129 +954,129 @@ export default function Chat() {
                       <div
                         className={`message ${(msg.sender?._id || msg.senderId) === (user?._id || user?.id) ? 'own-message' : 'other-message'}`}
                       >
-                    <div className="message-content">
-                      {editingMessage === (msg._id || msg.id) ? (
-                        <div style={{
-                          background: 'rgba(255, 255, 255, 0.9)',
-                          padding: '12px',
-                          borderRadius: '12px',
-                          border: '2px solid #2e3192',
-                          marginBottom: '8px'
-                        }}>
-                          <textarea
-                            value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
-                            style={{
-                              width: '100%',
-                              minHeight: '60px',
-                              padding: '8px',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '6px',
-                              fontSize: '14px',
-                              fontFamily: 'inherit',
-                              resize: 'vertical',
-                              outline: 'none'
-                            }}
-                            placeholder="Edit your message..."
-                          />
-                          <div style={{
-                            display: 'flex',
-                            gap: '8px',
-                            marginTop: '8px',
-                            justifyContent: 'flex-end'
-                          }}>
-                            <button
-                              onClick={() => handleSaveEdit(msg._id || msg.id)}
-                              style={{
-                                background: 'linear-gradient(135deg, #2e3192, #00b1b0)',
-                                color: 'white',
-                                border: 'none',
-                                padding: '6px 12px',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: '600'
-                              }}
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={handleCancelEdit}
-                              style={{
-                                background: '#6b7280',
-                                color: 'white',
-                                border: 'none',
-                                padding: '6px 12px',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: '600'
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="message-bubble">
-                          {msg.type === 'image' ? (
-                            <img src={`${API_BASE}${msg.content}`} alt="attachment" style={{ maxWidth: '320px', borderRadius: '12px' }} />
-                          ) : msg.type === 'file' ? (
-                            <a href={`${API_BASE}${msg.content}`} target="_blank" rel="noreferrer">
-                              <i className="fas fa-paperclip"></i> {msg.fileName || 'Download file'}
-                            </a>
-                          ) : (
-                            renderTextWithLinks(msg.content || msg.message)
-                          )}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                        <div className="message-timestamp">{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (msg.timestamp || '')}</div>
-                        {(msg.sender?._id || msg.senderId) === (user?._id || user?.id) && (
-                          <div className="msg-menu-wrap">
-                            <button
-                              type="button"
-                              className="msg-menu-btn"
-                              aria-haspopup="menu"
-                              aria-expanded={openMsgMenuId === (msg._id || msg.id)}
-                              onClick={() => setOpenMsgMenuId(prev => prev === (msg._id || msg.id) ? null : (msg._id || msg.id))}
-                              title="Message actions"
-                            >
-                              <i className="fas fa-ellipsis-vertical"></i>
-                            </button>
-                            {openMsgMenuId === (msg._id || msg.id) && (
-                              <div className="msg-menu" role="menu">
-                                {msg.type === 'text' && (
-                                  <button
-                                    className="msg-menu-item"
-                                    role="menuitem"
-                                    onClick={() => {
-                                      handleEditMessage(msg);
-                                      setOpenMsgMenuId(null);
-                                    }}
-                                  >
-                                    <i className="fas fa-pen"></i>
-                                    Edit
-                                  </button>
-                                )}
+                        <div className="message-content">
+                          {editingMessage === (msg._id || msg.id) ? (
+                            <div style={{
+                              background: 'rgba(255, 255, 255, 0.9)',
+                              padding: '12px',
+                              borderRadius: '12px',
+                              border: '2px solid #2e3192',
+                              marginBottom: '8px'
+                            }}>
+                              <textarea
+                                value={editContent}
+                                onChange={(e) => setEditContent(e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  minHeight: '60px',
+                                  padding: '8px',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: '6px',
+                                  fontSize: '14px',
+                                  fontFamily: 'inherit',
+                                  resize: 'vertical',
+                                  outline: 'none'
+                                }}
+                                placeholder="Edit your message..."
+                              />
+                              <div style={{
+                                display: 'flex',
+                                gap: '8px',
+                                marginTop: '8px',
+                                justifyContent: 'flex-end'
+                              }}>
                                 <button
-                                  className="msg-menu-item danger"
-                                  role="menuitem"
-                                  onClick={() => {
-                                    handleDeleteMessage(msg._id || msg.id);
-                                    setOpenMsgMenuId(null);
+                                  onClick={() => handleSaveEdit(msg._id || msg.id)}
+                                  style={{
+                                    background: 'linear-gradient(135deg, #2e3192, #00b1b0)',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '6px 12px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                    fontWeight: '600'
                                   }}
                                 >
-                                  <i className="fas fa-trash"></i>
-                                  Delete
+                                  Save
                                 </button>
+                                <button
+                                  onClick={handleCancelEdit}
+                                  style={{
+                                    background: '#6b7280',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '6px 12px',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                    fontWeight: '600'
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="message-bubble">
+                              {msg.type === 'image' ? (
+                                <img src={`${API_BASE}${msg.content}`} alt="attachment" style={{ maxWidth: '320px', borderRadius: '12px' }} />
+                              ) : msg.type === 'file' ? (
+                                <a href={`${API_BASE}${msg.content}`} target="_blank" rel="noreferrer">
+                                  <i className="fas fa-paperclip"></i> {msg.fileName || 'Download file'}
+                                </a>
+                              ) : (
+                                renderTextWithLinks(msg.content || msg.message)
+                              )}
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                            <div className="message-timestamp">{msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (msg.timestamp || '')}</div>
+                            {(msg.sender?._id || msg.senderId) === (user?._id || user?.id) && (
+                              <div className="msg-menu-wrap">
+                                <button
+                                  type="button"
+                                  className="msg-menu-btn"
+                                  aria-haspopup="menu"
+                                  aria-expanded={openMsgMenuId === (msg._id || msg.id)}
+                                  onClick={() => setOpenMsgMenuId(prev => prev === (msg._id || msg.id) ? null : (msg._id || msg.id))}
+                                  title="Message actions"
+                                >
+                                  <i className="fas fa-ellipsis-vertical"></i>
+                                </button>
+                                {openMsgMenuId === (msg._id || msg.id) && (
+                                  <div className="msg-menu" role="menu">
+                                    {msg.type === 'text' && (
+                                      <button
+                                        className="msg-menu-item"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          handleEditMessage(msg);
+                                          setOpenMsgMenuId(null);
+                                        }}
+                                      >
+                                        <i className="fas fa-pen"></i>
+                                        Edit
+                                      </button>
+                                    )}
+                                    <button
+                                      className="msg-menu-item danger"
+                                      role="menuitem"
+                                      onClick={() => {
+                                        handleDeleteMessage(msg._id || msg.id);
+                                        setOpenMsgMenuId(null);
+                                      }}
+                                    >
+                                      <i className="fas fa-trash"></i>
+                                      Delete
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
                     </React.Fragment>
                   );
                 })}
@@ -1092,8 +1092,8 @@ export default function Chat() {
                     <i className="fas fa-paperclip"></i>
                     <input type="file" style={{ display: 'none' }} onChange={handleFileSelect} disabled={isBlockedByMe || isBlockedByOther || uploading} />
                   </label>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="emoji-btn"
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                     disabled={isBlockedByMe || isBlockedByOther}
@@ -1113,13 +1113,13 @@ export default function Chat() {
                   <i className="fas fa-paper-plane"></i>
                 </button>
               </form>
-              
+
               {/* Emoji Picker */}
               {showEmojiPicker && (
                 <div className="emoji-picker">
                   <div className="emoji-picker-header">
                     <span>Choose an emoji</span>
-                    <button 
+                    <button
                       className="emoji-picker-close"
                       onClick={() => setShowEmojiPicker(false)}
                     >
@@ -1164,8 +1164,8 @@ export default function Chat() {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3><i className="fas fa-plus"></i> Start New Chat</h3>
-              <button 
-                className="modal-close-btn" 
+              <button
+                className="modal-close-btn"
                 onClick={() => setShowNewChatModal(false)}
                 aria-label="Close modal"
               >

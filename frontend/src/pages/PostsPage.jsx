@@ -44,6 +44,223 @@ const formatPresenceLabel = (presence) => {
   return humanized ? `Last seen ${humanized}` : 'Offline';
 };
 
+// Recursive comment component
+const CommentItem = ({ 
+  comment, 
+  postId, 
+  level = 0,
+  user,
+  userId,
+  isGuest,
+  editingComment,
+  editCommentText,
+  setEditCommentText,
+  handleSaveEditComment,
+  handleCancelEditComment,
+  handleLikeComment,
+  handleDeleteComment,
+  handleEditComment,
+  handleReply,
+  replyingTo,
+  replyText,
+  setReplyText,
+  handleSubmitReply,
+  handleCancelReply,
+  showReplies,
+  toggleReplies
+}) => {
+  const hasReplies = comment.replies && comment.replies.length > 0;
+  const isShowingReplies = showReplies[comment._id];
+  const isReplying = replyingTo === comment._id;
+  const isEditing = editingComment === comment._id;
+  const viewerId = userId;
+  const likedByViewer = viewerId
+    ? (comment.likes || []).some(l => {
+        const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
+        return id === viewerId;
+      })
+    : false;
+
+  return (
+    <div className={`comment-item ${likedByViewer ? 'comment-liked-by-user' : ''}`} style={{ marginLeft: level * 20 }}>
+      <div className="comment-avatar">
+        {comment.author?.username ? comment.author.username[0].toUpperCase() : 'U'}
+      </div>
+      <div className="comment-content">
+        <div className="comment-header">
+          <span className="comment-author">{comment.author?.username}</span>
+          <span className="comment-time">
+            {new Date(comment.createdAt).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit'
+            })}
+          </span>
+          {user && comment.author?._id === user._id && (
+            <div className="comment-actions-menu">
+              <button className="comment-menu-trigger">
+                <i className="fas fa-ellipsis-h"></i>
+              </button>
+              <div className="comment-menu-options">
+                <button onClick={() => handleEditComment(comment)} className="comment-menu-option edit">
+                  <i className="fas fa-edit"></i>
+                  <span>Edit</span>
+                </button>
+                <button onClick={() => handleDeleteComment(comment._id, postId)} className="comment-menu-option delete">
+                  <i className="fas fa-trash"></i>
+                  <span>Delete</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {isEditing ? (
+          <div className="edit-form-container">
+            <textarea
+              value={editCommentText}
+              onChange={(e) => setEditCommentText(e.target.value)}
+              className="themed-textarea"
+              placeholder="Edit your comment..."
+            />
+            <div className="form-actions">
+              <button
+                onClick={() => handleSaveEditComment(comment._id, postId)}
+                className="btn-form-primary"
+              >
+                Save
+              </button>
+              <button
+                onClick={handleCancelEditComment}
+                className="btn-form-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="comment-text">{comment.text}</p>
+        )}
+        
+        <div className="comment-actions-bar">
+          {(() => {
+            const uid = user?._id || user?.id;
+            const isOwnComment = uid && ((comment.author?._id || comment.author) === uid);
+            const isLiked = (comment.likes || []).some(l => {
+              const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
+              return id === uid;
+            });
+            return (
+              <>
+                <button
+                  type="button"
+                  className={`ink-stamp-btn comment-stamp-btn ${isLiked ? 'stamped' : ''} ${isGuest ? 'guest-locked' : ''}`}
+                  onClick={() => handleLikeComment(comment._id, postId)}
+                  disabled={isOwnComment}
+                  style={{ opacity: isOwnComment ? 0.5 : 1, cursor: isOwnComment ? 'not-allowed' : 'pointer' }}
+                  aria-disabled={isGuest}
+                  title={isGuest ? 'Sign in to stamp comments' : (isOwnComment ? 'Cannot stamp your own comment' : undefined)}
+                >
+                  {isLiked ? 'STAMPED' : 'STAMP'} {comment.likes?.length > 0 ? `(${comment.likes.length})` : '(0)'}
+                </button>
+
+                <button
+                  type="button"
+                  className={`comment-action-btn reply ${isGuest ? 'guest-locked' : ''}`}
+                  onClick={() => handleReply(comment)}
+                  aria-disabled={isGuest}
+                  title={isGuest ? 'Sign in to reply' : undefined}
+                >
+                  <i className="far fa-reply"></i>
+                  Reply
+                </button>
+
+                {hasReplies && (
+                  <button
+                    className="comment-action-btn"
+                    onClick={() => toggleReplies(comment._id)}
+                    style={{ color: '#6b7280' }}
+                  >
+                    <i className={`fas fa-chevron-${isShowingReplies ? 'up' : 'down'}`}></i>
+                    {isShowingReplies ? 'Hide' : 'Show'} {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
+                  </button>
+                )}
+              </>
+            );
+          })()}
+        </div>
+
+        {/* Reply Form */}
+        {isReplying && (
+          <div className="reply-form-container">
+            <div className="reply-form-wrapper">
+              <div className="reply-user-avatar">
+                {user?.username ? user.username[0].toUpperCase() : 'U'}
+              </div>
+              <div className="form-input-container">
+                <textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder={`Reply to ${comment.author?.username}...`}
+                  className="themed-textarea"
+                />
+                <div className="form-actions">
+                  <button
+                    onClick={handleCancelReply}
+                    className="btn-form-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleSubmitReply(postId, comment._id)}
+                    className="btn-form-primary"
+                  >
+                    Reply
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Replies */}
+        {hasReplies && isShowingReplies && (
+          <div style={{ marginTop: '12px' }}>
+            {comment.replies.map(reply => (
+              <CommentItem 
+                key={reply._id} 
+                comment={reply} 
+                postId={postId} 
+                level={level + 1}
+                user={user}
+                userId={userId}
+                isGuest={isGuest}
+                editingComment={editingComment}
+                editCommentText={editCommentText}
+                setEditCommentText={setEditCommentText}
+                handleSaveEditComment={handleSaveEditComment}
+                handleCancelEditComment={handleCancelEditComment}
+                handleLikeComment={handleLikeComment}
+                handleDeleteComment={handleDeleteComment}
+                handleEditComment={handleEditComment}
+                handleReply={handleReply}
+                replyingTo={replyingTo}
+                replyText={replyText}
+                setReplyText={setReplyText}
+                handleSubmitReply={handleSubmitReply}
+                handleCancelReply={handleCancelReply}
+                showReplies={showReplies}
+                toggleReplies={toggleReplies}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function PostsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -582,175 +799,7 @@ export default function PostsPage() {
     }));
   };
 
-  // Recursive comment component
-  const CommentItem = ({ comment, postId, level = 0 }) => {
-    const hasReplies = comment.replies && comment.replies.length > 0;
-    const isShowingReplies = showReplies[comment._id];
-    const isReplying = replyingTo === comment._id;
-    const isEditing = editingComment === comment._id;
-    const viewerId = userId;
-    const likedByViewer = viewerId
-      ? (comment.likes || []).some(l => {
-          const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
-          return id === viewerId;
-        })
-      : false;
 
-    return (
-      <div className={`comment-item ${likedByViewer ? 'comment-liked-by-user' : ''}`} style={{ marginLeft: level * 20 }}>
-        <div className="comment-avatar">
-          {comment.author?.username ? comment.author.username[0].toUpperCase() : 'U'}
-        </div>
-        <div className="comment-content">
-          <div className="comment-header">
-            <span className="comment-author">{comment.author?.username}</span>
-            <span className="comment-time">
-              {new Date(comment.createdAt).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit'
-              })}
-            </span>
-            {user && comment.author?._id === user._id && (
-              <div className="comment-actions-menu">
-                <button className="comment-menu-trigger">
-                  <i className="fas fa-ellipsis-h"></i>
-                </button>
-                <div className="comment-menu-options">
-                  <button onClick={() => handleEditComment(comment)} className="comment-menu-option edit">
-                    <i className="fas fa-edit"></i>
-                    <span>Edit</span>
-                  </button>
-                  <button onClick={() => handleDeleteComment(comment._id, postId)} className="comment-menu-option delete">
-                    <i className="fas fa-trash"></i>
-                    <span>Delete</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {isEditing ? (
-            <div className="edit-form-container">
-              <textarea
-                value={editCommentText}
-                onChange={(e) => setEditCommentText(e.target.value)}
-                className="themed-textarea"
-                placeholder="Edit your comment..."
-              />
-              <div className="form-actions">
-                <button
-                  onClick={() => handleSaveEditComment(comment._id, postId)}
-                  className="btn-form-primary"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={handleCancelEditComment}
-                  className="btn-form-secondary"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <p className="comment-text">{comment.text}</p>
-          )}
-          
-          <div className="comment-actions-bar">
-            {(() => {
-              const uid = user?._id || user?.id;
-              const isOwnComment = uid && ((comment.author?._id || comment.author) === uid);
-              const isLiked = (comment.likes || []).some(l => {
-                const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
-                return id === uid;
-              });
-              return (
-                <>
-                  <button
-                    type="button"
-                    className={`ink-stamp-btn comment-stamp-btn ${isLiked ? 'stamped' : ''} ${isGuest ? 'guest-locked' : ''}`}
-                    onClick={() => handleLikeComment(comment._id, postId)}
-                    disabled={isOwnComment}
-                    style={{ opacity: isOwnComment ? 0.5 : 1, cursor: isOwnComment ? 'not-allowed' : 'pointer' }}
-                    aria-disabled={isGuest}
-                    title={isGuest ? 'Sign in to stamp comments' : (isOwnComment ? 'Cannot stamp your own comment' : undefined)}
-                  >
-                    {isLiked ? 'STAMPED' : 'STAMP'} {comment.likes?.length > 0 ? `(${comment.likes.length})` : '(0)'}
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`comment-action-btn reply ${isGuest ? 'guest-locked' : ''}`}
-                    onClick={() => handleReply(comment)}
-                    aria-disabled={isGuest}
-                    title={isGuest ? 'Sign in to reply' : undefined}
-                  >
-                    <i className="far fa-reply"></i>
-                    Reply
-                  </button>
-
-                  {hasReplies && (
-                    <button
-                      className="comment-action-btn"
-                      onClick={() => toggleReplies(comment._id)}
-                      style={{ color: '#6b7280' }}
-                    >
-                      <i className={`fas fa-chevron-${isShowingReplies ? 'up' : 'down'}`}></i>
-                      {isShowingReplies ? 'Hide' : 'Show'} {comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'}
-                    </button>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-
-          {/* Reply Form */}
-          {isReplying && (
-            <div className="reply-form-container">
-              <div className="reply-form-wrapper">
-                <div className="reply-user-avatar">
-                  {user?.username ? user.username[0].toUpperCase() : 'U'}
-                </div>
-                <div className="form-input-container">
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder={`Reply to ${comment.author?.username}...`}
-                    className="themed-textarea"
-                  />
-                  <div className="form-actions">
-                    <button
-                      onClick={handleCancelReply}
-                      className="btn-form-secondary"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => handleSubmitReply(postId, comment._id)}
-                      className="btn-form-primary"
-                    >
-                      Reply
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Replies */}
-          {hasReplies && isShowingReplies && (
-            <div style={{ marginTop: '12px' }}>
-              {comment.replies.map(reply => (
-                <CommentItem key={reply._id} comment={reply} postId={postId} level={level + 1} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   const myPostsCount = user ? posts.filter(p => p.author?._id === user._id).length : 0;
   const likedPostsCount = user ? posts.filter(post => {
@@ -1073,7 +1122,31 @@ export default function PostsPage() {
                           ) : comments[post._id]?.length > 0 ? (
                             <>
                               {comments[post._id].map(comment => (
-                                <CommentItem key={comment._id} comment={comment} postId={post._id} />
+                                <CommentItem 
+                                key={comment._id} 
+                                comment={comment} 
+                                postId={post._id} 
+                                level={0}
+                                user={user}
+                                userId={userId}
+                                isGuest={isGuest}
+                                editingComment={editingComment}
+                                editCommentText={editCommentText}
+                                setEditCommentText={setEditCommentText}
+                                handleSaveEditComment={handleSaveEditComment}
+                                handleCancelEditComment={handleCancelEditComment}
+                                handleLikeComment={handleLikeComment}
+                                handleDeleteComment={handleDeleteComment}
+                                handleEditComment={handleEditComment}
+                                handleReply={handleReply}
+                                replyingTo={replyingTo}
+                                replyText={replyText}
+                                setReplyText={setReplyText}
+                                handleSubmitReply={handleSubmitReply}
+                                handleCancelReply={handleCancelReply}
+                                showReplies={showReplies}
+                                toggleReplies={toggleReplies}
+                              />
                               ))}
                             </>
                           ) : (

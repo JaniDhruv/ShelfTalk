@@ -451,7 +451,11 @@ export default function GroupPage() {
         if (!res.ok) throw new Error('Failed to delete post');
         await fetchGroup();
       } else if (deleteTarget.type === 'comment') {
-        const res = await fetch(`${API_BASE}/api/comments/${deleteTarget.id}`, { method: 'DELETE' });
+        const res = await fetch(`${API_BASE}/api/comments/${deleteTarget.id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ authorId: user?._id })
+        });
         if (!res.ok) throw new Error('Failed to delete comment');
         const postId = deleteTarget.postId;
         await fetchComments(postId);
@@ -571,7 +575,9 @@ export default function GroupPage() {
   const editComment = async (commentId, newText) => {
     try {
       const res = await fetch(`${API_BASE}/api/comments/${commentId}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: newText })
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: newText, authorId: user?._id })
       });
       if (!res.ok) throw new Error('Failed to update comment');
       const postId = Object.keys(commentsByPost).find(id =>
@@ -1133,13 +1139,13 @@ export default function GroupPage() {
                             <div className="post-card-dog-ear"></div>
                             <div className="post-header">
                               <div className="post-time">
-                                {(canModerate || (p.author?._id === user?._id)) && (
+                                {((user?._id && p.author?._id === user._id) || (user?._id && p.author === user._id) || canModerate) && (
                                   <div className="post-actions-menu">
                                     <span className="your-post-badge">Manage Post</span>
                                     <div className="post-menu-dropdown">
                                       <button className="post-menu-trigger"><i className="fas fa-ellipsis-h"></i></button>
                                       <div className="post-menu-options">
-                                        {editingPost !== p._id && (p.author?._id === user?._id) && (
+                                        {editingPost !== p._id && ((p.author?._id === user?._id) || (p.author === user?._id)) && (
                                           <button onClick={() => { setEditingPost(p._id); setEditPostContent(p.content || ''); }} className="post-menu-option edit">
                                             <i className="fas fa-edit"></i><span>Edit Post</span>
                                           </button>
@@ -1270,11 +1276,15 @@ export default function GroupPage() {
                   <div className="gp-chat-status">
                     <span>
                       <i className="fas fa-circle" style={{ color: '#22c55e', fontSize: 8, marginRight: 6 }} />
-                      Connected
+                      {group?.members?.filter(m => buildPresence(m).isOnline).length || 0} Online Now
                     </span>
-                    <span>
-                      Last updated: {lastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                    <button 
+                      onClick={() => fetchGroup()}
+                      className="gp-chat-refresh"
+                      title="Refresh online status"
+                    >
+                      <i className="fas fa-sync-alt"></i>
+                    </button>
                   </div>
                 )}
 
@@ -2141,59 +2151,6 @@ function InviteSearch({ group, groupId, actorId, onDone }) {
   );
 }
 
-function CommentsSection({ postId, comments, onAddComment, onLikeComment, onDeleteComment, onEditComment, canModerate, currentUserId }) {
-  const [editingComment, setEditingComment] = useState(null);
-  const [editText, setEditText] = useState('');
-  const [replyingTo, setReplyingTo] = useState(null);
-  const [replyText, setReplyText] = useState('');
-  const [showReplies, setShowReplies] = useState({});
-  // Submit handled inline via button click in UI; remove unused handleSubmit
-
-  const handleEditComment = (comment) => {
-    setEditingComment(comment._id);
-    setEditText(comment.text);
-  };
-
-  const handleSaveEditComment = (commentId) => {
-    if (!editText.trim()) return;
-    onEditComment(commentId, editText.trim());
-    setEditingComment(null);
-    setEditText('');
-  };
-
-  const handleCancelEditComment = () => {
-    setEditingComment(null);
-    setEditText('');
-  };
-
-  const handleReply = (comment) => {
-    setReplyingTo(comment._id);
-    setReplyText('');
-  };
-
-  const handleSubmitReply = (postId, parentCommentId) => {
-    if (!replyText.trim()) return;
-    onAddComment(postId, replyText.trim(), parentCommentId);
-    setReplyText('');
-    setReplyingTo(null);
-  };
-
-  const handleCancelReply = () => {
-    setReplyingTo(null);
-    setReplyText('');
-  };
-
-  const toggleReplies = (commentId) => {
-    setShowReplies(prev => ({
-      ...prev,
-      [commentId]: !prev[commentId]
-    }));
-  };
-
-  const canEdit = () => true; // Allow edit (demo parity)
-
-  // Save/Cancel handled by specific handlers above (handleSaveEditComment / handleCancelEditComment)
-
   // Recursive comment component - matches PostsPage exactly
   const CommentItem = ({
     comment,
@@ -2204,6 +2161,22 @@ function CommentsSection({ postId, comments, onAddComment, onLikeComment, onDele
     onEditComment,
     onAddComment,
     postId,
+
+    editingComment,
+    editText,
+    setEditText,
+    handleSaveEditComment,
+    handleCancelEditComment,
+    handleEditComment,
+    handleReply,
+    replyingTo,
+    replyText,
+    setReplyText,
+    handleSubmitReply,
+    handleCancelReply,
+    showReplies,
+    toggleReplies,
+    canEdit,
   }) => {
     const hasReplies = comment.replies && comment.replies.length > 0;
     const isShowingReplies = showReplies[comment._id];
@@ -2345,24 +2318,16 @@ function CommentsSection({ postId, comments, onAddComment, onLikeComment, onDele
               const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
               return id === uid;
             });
+            const isOwnComment = uid && ((comment.author?._id || comment.author) === uid);
             return (
               <button
+                type="button"
+                className={`ink-stamp-btn comment-stamp-btn ${isLiked ? 'stamped' : ''}`}
                 onClick={() => onLikeComment(comment._id)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: isLiked ? '#ef4444' : '#64748b',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 8px',
-                  borderRadius: '6px'
-                }}
+                disabled={isOwnComment}
+                style={{ opacity: isOwnComment ? 0.5 : 1, cursor: isOwnComment ? 'not-allowed' : 'pointer' }}
               >
-                <i className={`${isLiked ? 'fas fa-heart' : 'far fa-heart'}`}></i>
-                {comment.likes?.length > 0 && <span>{comment.likes.length}</span>}
+                {isLiked ? 'STAMPED' : 'STAMP'} {comment.likes?.length > 0 ? `(${comment.likes.length})` : '(0)'}
               </button>
             );
           })()}
@@ -2493,6 +2458,22 @@ function CommentsSection({ postId, comments, onAddComment, onLikeComment, onDele
                 onEditComment={onEditComment}
                 onAddComment={onAddComment}
                 postId={postId}
+
+                editingComment={editingComment}
+                editText={editText}
+                setEditText={setEditText}
+                handleSaveEditComment={handleSaveEditComment}
+                handleCancelEditComment={handleCancelEditComment}
+                handleEditComment={handleEditComment}
+                handleReply={handleReply}
+                replyingTo={replyingTo}
+                replyText={replyText}
+                setReplyText={setReplyText}
+                handleSubmitReply={handleSubmitReply}
+                handleCancelReply={handleCancelReply}
+                showReplies={showReplies}
+                toggleReplies={toggleReplies}
+                canEdit={canEdit}
               />
             ))}
           </div>
@@ -2500,6 +2481,64 @@ function CommentsSection({ postId, comments, onAddComment, onLikeComment, onDele
       </div>
     );
   };
+
+function CommentsSection({ postId, comments, onAddComment, onLikeComment, onDeleteComment, onEditComment, canModerate, currentUserId }) {
+  const [editingComment, setEditingComment] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [showReplies, setShowReplies] = useState({});
+  // Submit handled inline via button click in UI; remove unused handleSubmit
+
+  const handleEditComment = (comment) => {
+    setEditingComment(comment._id);
+    setEditText(comment.text);
+  };
+
+  const handleSaveEditComment = (commentId) => {
+    if (!editText.trim()) return;
+    onEditComment(commentId, editText.trim());
+    setEditingComment(null);
+    setEditText('');
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingComment(null);
+    setEditText('');
+  };
+
+  const handleReply = (comment) => {
+    setReplyingTo(comment._id);
+    setReplyText('');
+  };
+
+  const handleSubmitReply = (postId, parentCommentId) => {
+    if (!replyText.trim()) return;
+    onAddComment(postId, replyText.trim(), parentCommentId);
+    setReplyText('');
+    setReplyingTo(null);
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+    setReplyText('');
+  };
+
+  const toggleReplies = (commentId) => {
+    setShowReplies(prev => ({
+      ...prev,
+      [commentId]: !prev[commentId]
+    }));
+  };
+
+  const canEdit = (comment) => {
+    if (!currentUserId) return false;
+    const authorId = comment.author?._id || comment.author;
+    return authorId === currentUserId || canModerate;
+  };
+
+  // Save/Cancel handled by specific handlers above (handleSaveEditComment / handleCancelEditComment)
+
   const [topLevelText, setTopLevelText] = useState('');
 
   return (
@@ -2574,6 +2613,22 @@ function CommentsSection({ postId, comments, onAddComment, onLikeComment, onDele
               onEditComment={onEditComment}
               onAddComment={onAddComment}
               postId={postId}
+
+                editingComment={editingComment}
+                editText={editText}
+                setEditText={setEditText}
+                handleSaveEditComment={handleSaveEditComment}
+                handleCancelEditComment={handleCancelEditComment}
+                handleEditComment={handleEditComment}
+                handleReply={handleReply}
+                replyingTo={replyingTo}
+                replyText={replyText}
+                setReplyText={setReplyText}
+                handleSubmitReply={handleSubmitReply}
+                handleCancelReply={handleCancelReply}
+                showReplies={showReplies}
+                toggleReplies={toggleReplies}
+                canEdit={canEdit}
             />
           ))
         )}

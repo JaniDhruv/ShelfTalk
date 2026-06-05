@@ -128,7 +128,7 @@ export const updateComment = async (req, res) => {
 export const deleteComment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { authorId } = req.body;
+    const authorId = req.body?.authorId || req.query?.authorId;
 
     if (!authorId) {
       return res.status(400).json({ 

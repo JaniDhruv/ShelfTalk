@@ -24,7 +24,7 @@
 
 **ShelfTalk** is a full-stack social community platform built for book lovers. Think of it as a blend of Goodreads and Discord — readers can share updates, annotate passages, join genre-based clubs, chat in real-time, and coordinate live reading sessions together.
 
-Originally built as a hackathon project, ShelfTalk has since been revived and significantly expanded with real-time infrastructure, a live reading room feature, a personal reading diary, group invite system, cloud file storage, and more.
+Originally built as a college project, ShelfTalk has since been revived and significantly expanded with real-time infrastructure, a live reading room feature, a personal reading diary, an invite friends feature to help the community grow, cloud file storage, and more.
 
 ---
 
@@ -40,9 +40,9 @@ Originally built as a hackathon project, ShelfTalk has since been revived and si
 - Browse vibrant clubs and grow your reading circle
 - Deep profile search to find readers that match your taste
 
-### 💬 Real-Time Chat *(Socket.io)*
+### 💬 Real-Time Chat *(New)*
 - Private 1-on-1 conversations with live presence indicators
-- Replaced REST polling with a full Socket.io implementation for instant updates
+- Built a full Socket.io implementation for instant updates
 - Group-synced messaging keeps clubs coordinated
 
 ### 👥 Reader Groups & Clubs
@@ -58,8 +58,9 @@ Originally built as a hackathon project, ShelfTalk has since been revived and si
 - Log daily reading activity in a personal diary format
 - Track your reading journey over time
 
-### 📨 Invite System *(New)*
-- Send and manage group invites directly from the platform
+### 📨 Invite Friends
+- Send and manage group invites directly from the platform to help the community grow
+- Share a personal invite link to bring friends onto the platform
 
 ---
 
@@ -150,7 +151,7 @@ cp .env.example .env
 ```
 Fill in:
 ```env
-REACT_APP_API_BASE=http://localhost:5000
+VITE_API_BASE=http://localhost:5000
 ```
 
 ### Step 3 — Seed Database
@@ -189,7 +190,7 @@ Runs on **http://localhost:3000**
 
 ## 🚀 What's New (Finish-Up-A-Thon)
 
-This project was originally built as a hackathon submission. For the **GitHub Finish-Up-A-Thon Challenge**, ShelfTalk was revived, polished, and significantly expanded.
+This project originally started as a college project, but then for the **GitHub Finish-Up-A-Thon Challenge**, it was revived, polished, and significantly expanded.
 
 ### 🔄 The Before & After Journey
 - **Before:** A basic REST API with polling for chat, local file uploads that broke in production, a local MongoDB setup, and an unpolished React (CRA) frontend.
@@ -197,9 +198,10 @@ This project was originally built as a hackathon submission. For the **GitHub Fi
 
 ### 🤖 How GitHub Copilot Helped
 GitHub Copilot was instrumental in this revival:
-- **Real-Time Migration:** Accelerated the tedious process of migrating from REST polling to Socket.io by suggesting event emitters and listeners.
-- **UI Polish & Refactoring:** Helped refactor legacy CRA components into modern Vite setups, optimizing hooks and state management.
-- **Debugging Deployment:** Assisted in writing serverless-compatible code and resolving Vercel deployment issues swiftly.
+- **Live Reading Rooms:** Used Copilot Chat to understand the best approach for synchronizing state across multiple clients. It accurately scaffolded the Socket.io logic needed for users to join and interact in a shared reading space.
+- **Reading Diary:** Used Copilot Chat to brainstorm what data points would make the diary appealing and useful. It guided the structure for the Mongoose schemas and suggested the best ways to display the entries on the frontend.
+- **Bug Fixes & Configuration:** Relied on inline suggestions to quickly resolve type mismatches, configuration issues, and import errors, especially during the Vite migration.
+- **CSS & UI Tweaks:** Asked Copilot for styling suggestions to elevate the app's look. It effortlessly autocompleted flexbox layouts and provided responsive CSS classes for the new chat bubbles, saving me from constantly referencing documentation.
 
 | Area | What Changed |
 |---|---|

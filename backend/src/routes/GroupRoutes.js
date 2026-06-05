@@ -13,7 +13,7 @@ import {
   respondInvite,
   addModerator,
   removeModerator
-} from '../controllers/groupController.js';
+} from '../controllers/GroupController.js';
 
 const router = express.Router();
 

@@ -83,19 +83,30 @@ Originally built as a hackathon project, ShelfTalk has since been revived and si
 ShelfTalk/
 ├─ backend/           # Node + Express API
 │  ├─ src/
-│  │  ├─ server.js    # Entry point
-│  │  ├─ routes/
-│  │  ├─ models/
-│  │  └─ socket/      # Socket.io logic
+│  │  ├─ config/      # DB and env configurations
+│  │  ├─ controllers/ # Route logic
+│  │  ├─ models/      # Mongoose schemas
+│  │  ├─ routes/      # API endpoints
+│  │  ├─ services/    # Business logic
+│  │  ├─ socket/      # Socket.io logic
+│  │  ├─ utils/       # Helpers
+│  │  ├─ seedData.js  # Database seeder
+│  │  └─ server.js    # Entry point
 │  ├─ package.json
 │  └─ .env.example
 ├─ frontend/          # React + Vite app
-│  ├─ public/
+│  ├─ public/         # Static assets
 │  ├─ src/
+│  │  ├─ components/  # Reusable UI components
+│  │  ├─ context/     # React Context for state
+│  │  ├─ lib/         # Third-party lib setup (Axios, Socket)
+│  │  ├─ pages/       # App routes/views
+│  │  ├─ styles/      # Global styling
+│  │  └─ main.jsx     # Vite React entry point
 │  ├─ package.json
+│  ├─ vite.config.mjs # Vite configuration
 │  └─ .env.example
-├─ db-backup/         # MongoDB dump (shelftalk/)
-├─ uploads/           # Uploaded files
+
 └─ README.md
 ```
 
@@ -142,19 +153,8 @@ Fill in:
 REACT_APP_API_BASE=http://localhost:5000
 ```
 
-### Step 3 — Restore MongoDB Backup *(Recommended)*
+### Step 3 — Seed Database
 
-```bash
-# From repo root
-mongorestore --drop --db shelftalk ./db-backup/shelftalk
-```
-
-On Windows (PowerShell):
-```powershell
-& "C:\Program Files\MongoDB\Tools\100\bin\mongorestore.exe" --drop --db shelftalk .\db-backup\shelftalk
-```
-
-Or seed via script:
 ```bash
 cd backend && npm run seed
 ```
@@ -189,7 +189,17 @@ Runs on **http://localhost:3000**
 
 ## 🚀 What's New (Finish-Up-A-Thon)
 
-This project was originally built as a hackathon submission. Here's what was added and improved:
+This project was originally built as a hackathon submission. For the **GitHub Finish-Up-A-Thon Challenge**, ShelfTalk was revived, polished, and significantly expanded.
+
+### 🔄 The Before & After Journey
+- **Before:** A basic REST API with polling for chat, local file uploads that broke in production, a local MongoDB setup, and an unpolished React (CRA) frontend.
+- **After:** A fully real-time experience using Socket.io, robust cloud file storage (GridFS) and database (MongoDB Atlas), a lightning-fast Vite frontend, new features like Live Reading Rooms and Reading Diaries, and a deployed, polished application on Vercel.
+
+### 🤖 How GitHub Copilot Helped
+GitHub Copilot was instrumental in this revival:
+- **Real-Time Migration:** Accelerated the tedious process of migrating from REST polling to Socket.io by suggesting event emitters and listeners.
+- **UI Polish & Refactoring:** Helped refactor legacy CRA components into modern Vite setups, optimizing hooks and state management.
+- **Debugging Deployment:** Assisted in writing serverless-compatible code and resolving Vercel deployment issues swiftly.
 
 | Area | What Changed |
 |---|---|

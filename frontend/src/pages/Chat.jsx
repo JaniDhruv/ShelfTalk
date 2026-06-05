@@ -734,12 +734,12 @@ export default function Chat() {
       const snippet = parts[3] || '';
       const formattedLabel = label.startsWith('Check out this post by ') ? label.replace('Check out this post by ', 'Post by ') : label;
       return (
-        <a href={url} target="_blank" rel="noreferrer" className="mini-post-card" style={{ textDecoration: 'none' }}>
+        <div onClick={() => navigate(url)} className="mini-post-card" style={{ textDecoration: 'none', cursor: 'pointer' }}>
           <div className="mini-post-header">📄 {formattedLabel}</div>
           <hr style={{ border: 'none', borderTop: '1px solid #d4c4a8', margin: '8px 0' }} />
           {snippet && <div className="mini-post-snippet">"{snippet}"</div>}
           <div className="mini-post-action">[View Post →]</div>
-        </a>
+        </div>
       );
     }
     const urlRegex = /(https?:\/\/[^\s]+)/g;

@@ -1,0 +1,146 @@
+/* =========================================
+   Book Theme Chat Overrides
+   ========================================= */
+
+.chat-sidebar {
+  background: #f5ede0 !important;
+  border-right: 1px solid #d4c4a8 !important;
+}
+
+.chat-header {
+  background: #6b3a2a !important;
+  color: #fdfaf6 !important;
+}
+
+.chat-header::after {
+  display: none !important; /* Hide shimmer */
+}
+
+.chat-item:hover {
+  background: rgba(107, 58, 42, 0.08) !important;
+}
+
+.chat-item.active {
+  background: rgba(107, 58, 42, 0.12) !important;
+  border-left: 3px solid #8b3a3a !important;
+  border-right: none !important;
+  border-top: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.chat-item.active::before { display: none !important; }
+
+/* Sent (yours) */
+.own-message .message-bubble {
+  background: #6b3a2a !important;
+  color: #fdfaf6 !important;
+  font-family: 'Crimson Text', serif !important;
+  font-size: 1.05rem !important;
+  border-radius: 12px 12px 2px 12px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+}
+.own-message .message-bubble::before { display: none !important; } /* remove old gradient overlay */
+
+/* Received */
+.other-message .message-bubble {
+  background: #fdfaf6 !important;
+  color: #2c1810 !important;
+  border: 1px solid #d4c4a8 !important;
+  font-family: 'Crimson Text', serif !important;
+  font-size: 1.05rem !important;
+  border-radius: 12px 12px 12px 2px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+
+.chat-main {
+  background: #faf6ef !important; 
+}
+
+.message-input-container {
+  background: #fdfaf6 !important;
+  border-top: 1px solid #d4c4a8 !important;
+  padding: 12px 16px !important;
+}
+
+.chat-input {
+  background: #f5ede0 !important;
+  border: 1px solid #d4c4a8 !important;
+  font-family: 'Crimson Text', serif !important;
+  font-size: 1rem !important;
+  color: #2c1810 !important;
+  border-radius: 20px !important;
+  padding: 8px 16px !important;
+}
+
+.chat-input::placeholder {
+  color: rgba(44, 24, 16, 0.5) !important;
+}
+
+.send-btn {
+  background: #6b3a2a !important;
+  color: #fdfaf6 !important;
+  border: none !important;
+  border-radius: 50% !important;
+  width: 36px !important;
+  height: 36px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.date-divider span {
+  background: #e8dcc8 !important;
+  color: #6b3a2a !important;
+  font-family: 'Crimson Text', serif !important;
+  font-style: italic !important;
+  font-size: 0.8rem !important;
+  border: 1px solid #d4c4a8 !important;
+  border-radius: 20px !important;
+  padding: 3px 14px !important;
+  box-shadow: none !important;
+}
+.date-divider::before, .date-divider::after { display: none !important; }
+
+/* Status dots */
+.chat-status-dot.online { background: #5a8a5a !important; box-shadow: none !important; }
+.chat-status-dot.offline { background: #b0a090 !important; box-shadow: none !important; }
+.status-indicator.online { background: #5a8a5a !important; border: 2px solid #fdfaf6 !important; box-shadow: none !important; }
+.status-indicator.offline { background: #b0a090 !important; border: 2px solid #fdfaf6 !important; box-shadow: none !important; }
+.chat-presence.online .chat-status-dot { background: #5a8a5a !important; box-shadow: none !important; }
+.chat-presence.offline .chat-status-dot { background: #b0a090 !important; box-shadow: none !important; }
+
+/* Book Quote feature */
+.book-quote-card {
+  background: rgba(253, 250, 246, 0.9);
+  border: 1px dashed #d4c4a8;
+  border-radius: 4px;
+  padding: 16px;
+  margin: 4px 0;
+  font-family: 'Crimson Text', serif;
+  color: #2c1810;
+  max-width: 300px;
+  position: relative;
+}
+.book-quote-icon {
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+  color: #8b3a3a;
+  text-align: center;
+}
+.book-quote-text {
+  font-size: 1.1rem;
+  font-style: italic;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.book-quote-author {
+  font-size: 0.9rem;
+  text-align: center;
+  color: #6b3a2a;
+}
+.book-quote-author::before {
+  content: '— ';
+}

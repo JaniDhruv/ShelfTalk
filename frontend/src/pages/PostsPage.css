@@ -1632,9 +1632,11 @@ body {
 }
 
 .modal-header {
-  background: var(--ink-gradient);
-  color: var(--ivory-white);
-  padding: 1.5rem 2rem;
+  background: #6b3a2a;
+  color: #fdfaf6;
+  font-family: 'Crimson Text', serif;
+  border-radius: 8px 8px 0 0;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1651,17 +1653,17 @@ body {
 }
 
 .modal-close-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: #fdfaf6;
   border-radius: 50%;
-  width: 35px;
-  height: 35px;
-  color: var(--ivory-white);
-  cursor: pointer;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: var(--smooth-transition);
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
 
 .modal-close-btn:hover {
@@ -1670,9 +1672,11 @@ body {
 }
 
 .modal-body {
+  background: #fdfaf6;
+  font-family: 'Crimson Text', serif;
   padding: 2rem;
   overflow-y: auto;
-  max-height: calc(80vh - 100px);
+  max-height: 70vh;
 }
 
 .modal-body h4 {
@@ -2984,3 +2988,41 @@ textarea:focus,
 .comment-login-actions .btn-secondary {
   padding: 8px 16px;
 }
+.copy-link-btn {
+  background: transparent;
+  border: 1px solid #8b3a3a;
+  color: #8b3a3a;
+  font-family: 'Crimson Text', serif;
+  letter-spacing: 1px;
+  border-radius: 2px;
+  padding: 6px 18px;
+}
+
+.modal-action-btn {
+  background: #6b3a2a;
+  color: #fdfaf6;
+  border: none;
+  font-family: 'Crimson Text', serif;
+  letter-spacing: 1px;
+  border-radius: 2px;
+  padding: 8px 20px;
+}
+
+.modal-user-avatar {
+  background: #6b3a2a;
+  color: #fdfaf6;
+  border: none;
+  box-shadow: none;
+  font-family: 'Crimson Text', serif;
+  font-size: 1.2rem;
+}
+
+.modal-search-input {
+  background: #f5ede0;
+  border: 1px solid #d4c4a8;
+  border-radius: 2px;
+  font-family: 'Crimson Text', serif;
+  padding: 8px 14px;
+  width: 100%;
+}
+

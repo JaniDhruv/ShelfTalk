@@ -460,3 +460,40 @@
   padding: 2px 8px !important;
   letter-spacing: 1.5px !important;
 }
+
+/* Book Quote feature */
+.book-quote-card {
+  background: rgba(253, 250, 246, 0.9);
+  border: 1px dashed #d4c4a8;
+  border-radius: 4px;
+  padding: 16px;
+  margin: 12px auto;
+  width: fit-content;
+  display: block;
+  font-family: 'Crimson Text', Georgia, serif;
+  color: #2c1810;
+  max-width: 90%;
+  position: relative;
+}
+.book-quote-icon {
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+  color: #8b3a3a;
+  text-align: center;
+}
+.book-quote-text {
+  font-size: 1.1rem;
+  font-style: italic;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.book-quote-author {
+  font-size: 0.9rem;
+  text-align: center;
+  color: #6b3a2a;
+}
+.book-quote-author::before {
+  content: '— ';
+}
+

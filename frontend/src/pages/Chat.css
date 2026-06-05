@@ -1331,9 +1331,11 @@
 }
 
 .modal-header {
-  padding: 24px 24px 16px 24px;
-  background: var(--ink-gradient);
-  color: var(--ivory-white);
+  background: #6b3a2a; /* dark brown */
+  color: #fdfaf6;
+  font-family: 'Crimson Text', serif;
+  border-radius: 8px 8px 0 0;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1349,12 +1351,12 @@
 }
 
 .modal-close-btn {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255,255,255,0.2);
   border: none;
-  color: white;
-  width: 36px;
-  height: 36px;
+  color: #fdfaf6;
   border-radius: 50%;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1367,6 +1369,8 @@
 }
 
 .modal-body {
+  background: #fdfaf6;
+  font-family: 'Crimson Text', serif;
   padding: 24px;
   max-height: 400px;
   overflow-y: auto;
@@ -1665,3 +1669,76 @@
 .msg-menu-item.danger:hover {
   background: rgba(185, 28, 28, 0.08);
 }
+.copy-link-btn {
+  background: transparent;
+  border: 1px solid #8b3a3a;
+  color: #8b3a3a;
+  font-family: 'Crimson Text', serif;
+  letter-spacing: 1px;
+  border-radius: 2px;
+  padding: 6px 18px;
+}
+
+.modal-action-btn {
+  background: #6b3a2a;
+  color: #fdfaf6;
+  border: none;
+  font-family: 'Crimson Text', serif;
+  letter-spacing: 1px;
+  border-radius: 2px;
+  padding: 8px 20px;
+}
+
+.modal-user-avatar {
+  background: #6b3a2a;
+  color: #fdfaf6;
+  border: none;
+  box-shadow: none;
+  font-family: 'Crimson Text', serif;
+  font-size: 1.2rem;
+}
+
+.modal-search-input {
+  background: #f5ede0;
+  border: 1px solid #d4c4a8;
+  border-radius: 2px;
+  font-family: 'Crimson Text', serif;
+  padding: 8px 14px;
+  width: 100%;
+}
+
+
+.mini-post-card {
+  background: #fdfaf6;
+  border: 1px solid #d4c4a8;
+  border-radius: 4px;
+  padding: 12px;
+  margin-top: 8px;
+  font-family: 'Crimson Text', serif;
+  color: #36454f;
+  text-decoration: none;
+  display: block;
+}
+
+.mini-post-header {
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #6b3a2a;
+}
+
+.mini-post-snippet {
+  font-style: italic;
+  margin-bottom: 12px;
+  color: #555;
+}
+
+.mini-post-action {
+  font-size: 0.9em;
+  font-weight: bold;
+  color: #6b3a2a;
+}
+
+.mini-post-card:hover {
+  background: #f5ede0;
+}
+

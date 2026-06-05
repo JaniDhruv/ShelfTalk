@@ -54,6 +54,7 @@ export const sendMessage = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const { senderId, content, type } = req.body;
+    console.log('[DEBUG sendMessage]', { conversationId, senderId, contentLength: content?.length, type });
     const result = await sendConversationMessage({
       conversationId,
       senderId,
@@ -64,6 +65,7 @@ export const sendMessage = async (req, res) => {
     emitMessageCreated(getIo(req), result);
     res.status(201).json(result.message);
   } catch (error) {
+    console.error('[DEBUG sendMessage ERROR]', error.message, error.status);
     sendError(res, error);
   }
 };

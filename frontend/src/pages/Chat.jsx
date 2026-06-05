@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import './Chat.css';
+import './ChatThemeOverrides.css';
 import ConfirmationModal from '../components/ConfirmationModal';
 import GuestGate from '../components/GuestGate';
 import { getChatSocket } from '../lib/socket';
@@ -708,12 +709,37 @@ export default function Chat() {
 
   const renderTextWithLinks = (text) => {
     if (!text) return '';
+
+    // Book Quote feature
+    if (typeof text === 'string' && text.trim().startsWith('/quote ')) {
+      const content = text.replace('/quote ', '').trim();
+      const parts = content.split(' - ');
+      const quoteText = parts[0];
+      const authorText = parts.length > 1 ? parts.slice(1).join(' - ') : 'Unknown Author';
+      return (
+        <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <div className="book-quote-card">
+            <div className="book-quote-icon">📖</div>
+            <div className="book-quote-text">"{quoteText.trim()}"</div>
+            <div className="book-quote-author">{authorText.trim()}</div>
+          </div>
+        </div>
+      );
+    }
+
     if (typeof text === 'string' && text.startsWith('LINKMSG::')) {
       const parts = text.split('::');
       const label = parts[1] || 'View link';
       const url = parts[2] || '#';
+      const snippet = parts[3] || '';
+      const formattedLabel = label.startsWith('Check out this post by ') ? label.replace('Check out this post by ', 'Post by ') : label;
       return (
-        <a href={url} target="_blank" rel="noreferrer">{label}</a>
+        <a href={url} target="_blank" rel="noreferrer" className="mini-post-card" style={{ textDecoration: 'none' }}>
+          <div className="mini-post-header">📄 {formattedLabel}</div>
+          <hr style={{ border: 'none', borderTop: '1px solid #d4c4a8', margin: '8px 0' }} />
+          {snippet && <div className="mini-post-snippet">"{snippet}"</div>}
+          <div className="mini-post-action">[View Post →]</div>
+        </a>
       );
     }
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -1158,7 +1184,7 @@ export default function Chat() {
                     placeholder="Type a username to search..."
                     value={searchUsers}
                     onChange={(e) => setSearchUsers(e.target.value)}
-                    className="form-input"
+                    className="modal-search-input"
                   />
                 </div>
               </div>
@@ -1170,7 +1196,7 @@ export default function Chat() {
                     {foundUsers.map(foundUser => (
                       <div key={foundUser._id} className="user-result-item">
                         <div className="user-info">
-                          <div className="user-avatar">
+                          <div className="user-avatar modal-user-avatar">
                             <div className="avatar-circle">
                               {foundUser.username?.charAt(0).toUpperCase() || 'U'}
                             </div>
@@ -1183,7 +1209,7 @@ export default function Chat() {
                           </div>
                         </div>
                         <button
-                          className="btn btn-primary"
+                          className="modal-action-btn"
                           onClick={() => createDirectMessage(foundUser._id)}
                           disabled={isCreatingChat}
                         >

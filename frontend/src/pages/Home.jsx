@@ -12,6 +12,20 @@ const coreFeatures = [
     cta: 'Visit posts'
   },
   {
+    icon: 'fa-solid fa-book-open-reader',
+    title: 'Live Reading Rooms',
+    description: 'Read PDFs together in real-time. See who is on the same page, share live annotations, and celebrate finishing books together.',
+    path: '/groups',
+    cta: 'Join a room'
+  },
+  {
+    icon: 'fa-solid fa-book-journal-whills',
+    title: 'Private Reading Diary',
+    description: 'Keep a personal reading journal. Track your thoughts, daily progress, and private book notes away from the public feed.',
+    path: '/profile',
+    cta: 'Start journaling'
+  },
+  {
     icon: 'fa-solid fa-compass',
     title: 'Powerful Discovery',
     description: 'Filter readers by genre, location, and interests or browse vibrant clubs to grow your circle.',
@@ -36,19 +50,19 @@ const coreFeatures = [
 
 const experienceHighlights = [
   {
-    title: 'Posts & Reactions',
-    description: 'ShelfTalk posts keep the conversation flowing with rich comments, replies, and at-a-glance engagement metrics.',
-    points: ['Share reading updates in seconds', 'Follow comment threads without losing context', 'Revisit saved discussions from your dashboard']
+    title: 'Synchronised Co-Reading',
+    description: "Reading doesn't have to be lonely. Jump into a Live Reading Room and see exactly which page your club members are on.",
+    points: ['Upload and read PDFs together in real-time', 'Drop emoji pins and notes directly onto pages', 'Get notified the second someone finishes a chapter']
   },
   {
-    title: 'Discovery & Profiles',
-    description: 'Deep search tools reveal readers, authors, and clubs that match your taste while personal profiles showcase your voice.',
-    points: ['Filter by genres, authors, and languages', 'Understand reader presence with live activity badges', 'Spotlight your shelf updates on your profile']
+    title: 'Posts & Private Diaries',
+    description: 'Whether you want to broadcast your thoughts to the community or keep a private reading journal, ShelfTalk gives you the space.',
+    points: ['Share reading updates in seconds on the community feed', 'Maintain a private, distraction-free reading diary', 'Follow comment threads without losing context']
   },
   {
-    title: 'Chat & Group Sync',
-    description: 'Bring the club online with private chat, structured group spaces, and shared updates that surface every new post or invite.',
-    points: ['Jump into ongoing conversations instantly', 'Coordinate events inside dedicated group threads', 'Keep everyone aligned with group announcements']
+    title: 'Discovery & Deep Chat',
+    description: 'Deep search tools reveal readers, authors, and clubs that match your taste, while real-time messaging keeps the bond strong.',
+    points: ['Filter by genres, authors, and languages', 'Coordinate events inside dedicated group threads', 'Bring the club online with private chat']
   }
 ];
 
@@ -71,30 +85,7 @@ const journeySteps = [
   }
 ];
 
-const testimonials = [
-  {
-    quote: 'ShelfTalk keeps our campus book club connected between meetings. Posts, chat, and invites all sit in one place.',
-    name: 'Ishita Rao',
-    role: 'University Club Coordinator'
-  },
-  {
-    quote: 'I find new readers every week through the discovery filters. Conversations here feel thoughtful and welcoming.',
-    name: 'Michael Nguyen',
-    role: 'Community Moderator'
-  },
-  {
-    quote: 'Managing my author group is effortless now. Direct messages and group announcements reach readers instantly.',
-    name: 'Ana Gutierrez',
-    role: 'Indie Author'
-  }
-];
 
-const communityStats = [
-  { value: '50K+', label: 'Active readers' },
-  { value: '1.2M+', label: 'Posts shared' },
-  { value: '350+', label: 'Active clubs' },
-  { value: '15K+', label: 'Daily messages' }
-];
 
 export default function Home() {
   const navigate = useNavigate();
@@ -118,7 +109,7 @@ export default function Home() {
             <p className="st-hero-eyebrow">Community built around books</p>
             <h1 className="st-hero-title">Turn every reading list into a living conversation.</h1>
             <p className="st-hero-subtitle">
-              ShelfTalk unites posts, discovery, real-time chat, and reader groups so book lovers never read in isolation.
+              ShelfTalk unites live PDF co-reading, private diaries, discovery, and reader groups so book lovers never read in isolation.
             </p>
             <div className="st-hero-actions">
               <button
@@ -166,13 +157,13 @@ export default function Home() {
             </div>
             <div className="st-preview-card st-preview-chat">
               <header>
-                <span className="st-badge st-badge-gold">Live chat</span>
-                <i className="fa-solid fa-bolt"></i>
+                <span className="st-badge st-badge-gold">Live Reading Room</span>
+                <i className="fa-solid fa-book-open-reader"></i>
               </header>
               <div className="st-chat-bubbles">
-                <p className="st-chat st-chat-in">Ready for Friday's club meetup?</p>
-                <p className="st-chat st-chat-out">Absolutely! Posting the reading guide now.</p>
-                <p className="st-chat st-chat-in">Perfect, I will invite the new members.</p>
+                <p className="st-chat st-chat-in">📖 Sarah joined the room</p>
+                <p className="st-chat st-chat-out">📌 Page 42: "This plot twist is insane!"</p>
+                <p className="st-chat st-chat-in">🎉 Michael finished the book!</p>
               </div>
             </div>
           </div>
@@ -248,43 +239,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="st-section st-testimonials">
-        <div className="st-section-heading">
-          <span className="st-kicker">Community voices</span>
-          <h2>Readers trust ShelfTalk to extend every chapter</h2>
-          <p>Clubs, moderators, and authors rely on the platform to keep conversations respectful, lively, and organised.</p>
-        </div>
-        <div className="st-testimonial-grid">
-          {testimonials.map((item) => (
-            <figure key={item.name} className="st-testimonial-card">
-              <blockquote>
-                <i className="fa-solid fa-quote-left"></i>
-                <p>{item.quote}</p>
-              </blockquote>
-              <figcaption>
-                <span className="st-testimonial-name">{item.name}</span>
-                <span className="st-testimonial-role">{item.role}</span>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
-
-      <section className="st-section st-metrics">
-        <div className="st-section-heading">
-          <span className="st-kicker">By the numbers</span>
-          <h2>A thriving literary network</h2>
-          <p>Activity across posts, chats, and groups keeps the ShelfTalk ecosystem moving nonstop.</p>
-        </div>
-        <div className="st-metric-grid">
-          {communityStats.map((stat) => (
-            <article key={stat.label} className="st-metric-card">
-              <span className="st-metric-value">{stat.value}</span>
-              <span className="st-metric-label">{stat.label}</span>
-            </article>
-          ))}
-        </div>
-      </section>
 
       <section className="st-section st-final-cta">
         <div className="st-final-card">
@@ -347,36 +301,7 @@ export default function Home() {
                 <li><button onClick={() => navigate('/posts')}>Community Posts</button></li>
                 <li><button onClick={() => navigate('/discover')}>Discover Readers</button></li>
                 <li><button onClick={() => navigate('/chat')}>Real-Time Chat</button></li>
-                <li><button onClick={() => navigate('/groups')}>Reader Groups</button></li>
-              </ul>
-            </div>
-
-            <div className="st-footer-column">
-              <h4>Resources</h4>
-              <ul>
-                <li><a href="#help">Help Center</a></li>
-                <li><a href="#guidelines">Community Guidelines</a></li>
-                <li><a href="#blog">Blog</a></li>
-              </ul>
-            </div>
-
-            <div className="st-footer-column">
-              <h4>Legal</h4>
-              <ul>
-                <li><a href="#privacy">Privacy Policy</a></li>
-                <li><a href="#terms">Terms of Service</a></li>
-                <li><a href="#cookies">Cookie Policy</a></li>
-                <li><a href="#dmca">DMCA</a></li>
-              </ul>
-            </div>
-
-            <div className="st-footer-column">
-              <h4>Connect</h4>
-              <ul>
-                <li><a href="mailto:hello@shelftalk.com">hello@shelftalk.com</a></li>
-                <li><a href="#contact">Contact Form</a></li>
-                <li><a href="#careers">Careers</a></li>
-                <li><a href="#press">Press Kit</a></li>
+                <li><button onClick={() => navigate('/groups')}>Reader Groups & Live Rooms</button></li>
               </ul>
             </div>
           </div>

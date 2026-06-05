@@ -66,10 +66,7 @@ app.use('/api/diary', diaryRoutes);
 
 // MongoDB Connection
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/shelftalk';
-mongoose.connect(mongoURI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+mongoose.connect(mongoURI)
 .then(async () => {
   console.log('✅ MongoDB Connected');
 

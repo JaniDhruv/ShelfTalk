@@ -127,10 +127,7 @@ const sampleGroups = [
 async function seedDatabase() {
   try {
     console.log('🌱 Connecting to MongoDB...');
-    await mongoose.connect(mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
+    await mongoose.connect(mongoURI);
     console.log('✅ Connected to MongoDB');
 
     // Clear existing data

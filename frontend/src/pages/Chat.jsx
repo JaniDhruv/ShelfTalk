@@ -734,7 +734,16 @@ export default function Chat() {
       const snippet = parts[3] || '';
       const formattedLabel = label.startsWith('Check out this post by ') ? label.replace('Check out this post by ', 'Post by ') : label;
       return (
-        <div onClick={() => navigate(url)} className="mini-post-card" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+        <div onClick={() => {
+          try {
+            const urlObj = new URL(url);
+            if (urlObj.hostname === window.location.hostname) {
+              navigate(urlObj.pathname + urlObj.search + urlObj.hash);
+              return;
+            }
+          } catch(e) {}
+          window.open(url, '_blank');
+        }} className="mini-post-card" style={{ textDecoration: 'none', cursor: 'pointer' }}>
           <div className="mini-post-header">📄 {formattedLabel}</div>
           <hr style={{ border: 'none', borderTop: '1px solid #d4c4a8', margin: '8px 0' }} />
           {snippet && <div className="mini-post-snippet">"{snippet}"</div>}

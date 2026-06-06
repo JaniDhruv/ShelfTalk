@@ -281,14 +281,16 @@ const CommentItem = ({
   );
 };
 
+let globalPostsCache = null;
+
 export default function PostsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState(globalPostsCache || []);
   const [savedPosts, setSavedPosts] = useState(new Set());
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsLoading, setPostsLoading] = useState(!globalPostsCache);
   const [error, setError] = useState('');
   // Active section for navigation: create | all | my | liked
   const [activeSection, setActiveSection] = useState('all');
@@ -385,9 +387,17 @@ export default function PostsPage() {
     loadConversations();
   }, [userId, API_BASE]);
 
+  useEffect(() => {
+    if (posts.length > 0) {
+      globalPostsCache = posts;
+    }
+  }, [posts]);
+
   const fetchPosts = async () => {
     try {
-      setPostsLoading(true);
+      if (!globalPostsCache) {
+        setPostsLoading(true);
+      }
       const response = await fetch(`${API_BASE}/api/posts`);
       if (response.ok) {
         const data = await response.json();
@@ -415,11 +425,12 @@ export default function PostsPage() {
           commentCount: counts[post._id] || 0
         }));
         setPosts(postsWithCounts);
+        globalPostsCache = postsWithCounts;
       } else {
-        setError('Failed to load posts');
+        if (!globalPostsCache) setError('Failed to load posts');
       }
     } catch (err) {
-      setError('Something went wrong while loading posts');
+      if (!globalPostsCache) setError('Something went wrong while loading posts');
     } finally {
       setPostsLoading(false);
     }

@@ -1513,183 +1513,193 @@ export default function GroupPage() {
             {/* Library Tab */}
             {activeTab === 'library' && (
               <div>
-                {/* Active Session Banner */}
-                {activeSession && activeSession.status === 'active' && (
-                  <div className="gp-active-session-banner">
-                    <div>
-                      <div className="gp-active-session-label">
-                        <span className="gp-active-session-indicator" />
-                        Live Reading Session
-                      </div>
-                      <div className="gp-active-session-title">
-                        📖 {activeSession.title || 'Untitled'}
-                      </div>
-                      <div className="gp-active-session-meta">
-                        {activeSession.participants?.length || 0} reader{(activeSession.participants?.length || 0) !== 1 ? 's' : ''} • Page {activeSession.participants?.find(p => getEntityId(p.userId) === userId)?.currentPage || 1} / {activeSession.pageCount || '—'}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => navigate(`/groups/${id}/reading-room/${activeSession._id}`)}
-                      className="gp-active-session-btn"
-                    >
-                      <i className="fas fa-book-open-reader" style={{ marginRight: 8 }} />
-                      Join Reading Room →
-                    </button>
+                {!isMember ? (
+                  <div className="gp-card" style={{ padding: '48px', textAlign: 'center' }}>
+                    <i className="fas fa-lock" style={{ fontSize: '48px', color: '#9ca3af', marginBottom: '24px' }} />
+                    <h3>Private Library</h3>
+                    <p style={{ color: '#6b7280', marginTop: '12px' }}>You must be a member of this group to access its library.</p>
                   </div>
-                )}
-
-                {/* Upload Section (Owner/Mod only) */}
-                {canModerate && (
-                  <div className="gp-card gp-library-upload">
-                    <div className="gp-library-upload-stripe" />
-                    <h3 className="gp-library-upload-title">
-                      <i className="fas fa-cloud-arrow-up gp-library-upload-icon" />
-                      Upload Book PDF
-                    </h3>
-                    <form onSubmit={handleUploadPdf} className="gp-library-upload-form">
-                      <div className="gp-library-upload-field">
-                        <label>Book Title (optional)</label>
-                        <input
-                          type="text"
-                          value={uploadTitle}
-                          onChange={(e) => setUploadTitle(e.target.value)}
-                          placeholder="Auto-detected from filename"
-                          className="gp-input"
-                        />
-                      </div>
-                      <div className="gp-library-upload-field">
-                        <label>PDF File</label>
-                        <input
-                          type="file"
-                          accept=".pdf,application/pdf"
-                          required
-                          className="gp-input gp-input--file"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={uploadingBook}
-                        className={`gp-btn gp-btn--primary gp-library-upload-btn ${uploadingBook ? 'gp-btn--disabled' : ''}`}
-                      >
-                        <i className={`fas fa-${uploadingBook ? 'spinner fa-spin' : 'upload'}`} style={{ marginRight: 8 }} />
-                        {uploadingBook ? 'Uploading...' : 'Upload PDF'}
-                      </button>
-                    </form>
-                  </div>
-                )}
-
-                {/* Books Grid */}
-                <div className="gp-card gp-library-grid">
-                  <div className="gp-rule" />
-                  <div className="gp-library-header">
-                    <h3 className="gp-library-title">
-                      <i className="fas fa-book gp-library-icon" />
-                      Group Library
-                    </h3>
-                    <span className="gp-library-count">
-                      {libraryBooks.length} book{libraryBooks.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-
-                  <div className="gp-library-body">
-                    {libraryLoading ? (
-                      <div className="gp-loading">
-                        <i className="fas fa-spinner fa-spin gp-loading-icon" />
-                        Loading library...
-                      </div>
-                    ) : libraryBooks.length === 0 ? (
-                      <div className="gp-empty-state gp-empty-state--fill">
-                        <i className="fas fa-book-open gp-empty-state-icon" />
-                        <div>No books in the library yet</div>
-                        {canModerate && (
-                          <div className="gp-empty-state-sub">Upload a PDF above to get started</div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="gp-books-grid">
-                        {libraryBooks.map((book) => {
-                          const isActiveBook = activeSession?.bookId?._id === book._id || getEntityId(activeSession?.bookId) === book._id;
-                          const fileSizeKb = book.fileSize ? (book.fileSize / 1024).toFixed(0) : '—';
-                          const fileSizeLabel = book.fileSize > 1048576
-                            ? `${(book.fileSize / 1048576).toFixed(1)} MB`
-                            : `${fileSizeKb} KB`;
-
-                          return (
-                            <div key={book._id} className={`gp-book-card ${isActiveBook ? 'gp-book-card--active' : ''}`}>
-                              {isActiveBook && (
-                                <div className="gp-book-active-badge">
-                                  📖 Active Session
-                                </div>
-                              )}
-
-                              {/* Book cover placeholder */}
-                              <div className="gp-book-cover">
-                                <i className="fas fa-file-pdf" />
-                              </div>
-
-                              <div className="gp-book-info">
-                                <div className="gp-book-title">
-                                  {book.title || book.originalName || 'Untitled'}
-                                </div>
-                                <div className="gp-book-meta">
-                                  <span className="gp-book-tag">
-                                    {fileSizeLabel}
-                                  </span>
-                                  {book.pageCount > 0 && (
-                                    <span className="gp-book-tag">
-                                      {book.pageCount} pages
-                                    </span>
-                                  )}
-                                  <span className="gp-book-tag">
-                                    {new Date(book.uploadedAt || book.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                  </span>
-                                </div>
-
-                                <div className="gp-book-actions">
-                                  {canModerate && !activeSession && (
-                                    <button
-                                      onClick={() => handleStartSession(book._id)}
-                                      disabled={startingSession === book._id}
-                                      className={`gp-book-btn gp-book-btn-start ${startingSession === book._id ? 'gp-btn--disabled' : ''}`}
-                                    >
-                                      <i className={`fas fa-${startingSession === book._id ? 'spinner fa-spin' : 'play'}`} style={{ marginRight: 6 }} />
-                                      {startingSession === book._id ? 'Starting...' : 'Start Session'}
-                                    </button>
-                                  )}
-                                  {isActiveBook && (
-                                    <button
-                                      onClick={() => navigate(`/groups/${id}/reading-room/${activeSession._id}`)}
-                                      className="gp-book-btn gp-book-btn-join"
-                                    >
-                                      <i className="fas fa-users" style={{ marginRight: 6 }} />
-                                      Join Session
-                                    </button>
-                                  )}
-                                  <button
-                                    onClick={() => navigate(`/groups/${id}/library/${book._id}/read`)}
-                                    className="gp-book-btn gp-book-btn-solo"
-                                  >
-                                    <i className="fas fa-book-open" style={{ marginRight: 6 }} />
-                                    Read Solo
-                                  </button>
-                                  {canModerate && (
-                                    <button
-                                      onClick={() => handleDeleteBook(book._id)}
-                                      className="gp-book-btn gp-book-btn--icon"
-                                      title="Delete book"
-                                    >
-                                      <i className="fas fa-trash" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                ) : (
+                  <>
+                    {/* Active Session Banner */}
+                    {activeSession && activeSession.status === 'active' && (
+                      <div className="gp-active-session-banner">
+                        <div>
+                          <div className="gp-active-session-label">
+                            <span className="gp-active-session-indicator" />
+                            Live Reading Session
+                          </div>
+                          <div className="gp-active-session-title">
+                            📖 {activeSession.title || 'Untitled'}
+                          </div>
+                          <div className="gp-active-session-meta">
+                            {activeSession.participants?.length || 0} reader{(activeSession.participants?.length || 0) !== 1 ? 's' : ''} • Page {activeSession.participants?.find(p => getEntityId(p.userId) === userId)?.currentPage || 1} / {activeSession.pageCount || '—'}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/groups/${id}/reading-room/${activeSession._id}`)}
+                          className="gp-active-session-btn"
+                        >
+                          <i className="fas fa-book-open-reader" style={{ marginRight: 8 }} />
+                          Join Reading Room →
+                        </button>
                       </div>
                     )}
-                  </div>
-                </div>
+
+                    {/* Upload Section (Owner/Mod only) */}
+                    {canModerate && (
+                      <div className="gp-card gp-library-upload">
+                        <div className="gp-library-upload-stripe" />
+                        <h3 className="gp-library-upload-title">
+                          <i className="fas fa-cloud-arrow-up gp-library-upload-icon" />
+                          Upload Book PDF
+                        </h3>
+                        <form onSubmit={handleUploadPdf} className="gp-library-upload-form">
+                          <div className="gp-library-upload-field">
+                            <label>Book Title (optional)</label>
+                            <input
+                              type="text"
+                              value={uploadTitle}
+                              onChange={(e) => setUploadTitle(e.target.value)}
+                              placeholder="Auto-detected from filename"
+                              className="gp-input"
+                            />
+                          </div>
+                          <div className="gp-library-upload-field">
+                            <label>PDF File</label>
+                            <input
+                              type="file"
+                              accept=".pdf,application/pdf"
+                              required
+                              className="gp-input gp-input--file"
+                            />
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={uploadingBook}
+                            className={`gp-btn gp-btn--primary gp-library-upload-btn ${uploadingBook ? 'gp-btn--disabled' : ''}`}
+                          >
+                            <i className={`fas fa-${uploadingBook ? 'spinner fa-spin' : 'upload'}`} style={{ marginRight: 8 }} />
+                            {uploadingBook ? 'Uploading...' : 'Upload PDF'}
+                          </button>
+                        </form>
+                      </div>
+                    )}
+
+                    {/* Books Grid */}
+                    <div className="gp-card gp-library-grid">
+                      <div className="gp-rule" />
+                      <div className="gp-library-header">
+                        <h3 className="gp-library-title">
+                          <i className="fas fa-book gp-library-icon" />
+                          Group Library
+                        </h3>
+                        <span className="gp-library-count">
+                          {libraryBooks.length} book{libraryBooks.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+
+                      <div className="gp-library-body">
+                        {libraryLoading ? (
+                          <div className="gp-loading">
+                            <i className="fas fa-spinner fa-spin gp-loading-icon" />
+                            Loading library...
+                          </div>
+                        ) : libraryBooks.length === 0 ? (
+                          <div className="gp-empty-state gp-empty-state--fill">
+                            <i className="fas fa-book-open gp-empty-state-icon" />
+                            <div>No books in the library yet</div>
+                            {canModerate && (
+                              <div className="gp-empty-state-sub">Upload a PDF above to get started</div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="gp-books-grid">
+                            {libraryBooks.map((book) => {
+                              const isActiveBook = activeSession?.bookId?._id === book._id || getEntityId(activeSession?.bookId) === book._id;
+                              const fileSizeKb = book.fileSize ? (book.fileSize / 1024).toFixed(0) : '—';
+                              const fileSizeLabel = book.fileSize > 1048576
+                                ? `${(book.fileSize / 1048576).toFixed(1)} MB`
+                                : `${fileSizeKb} KB`;
+
+                              return (
+                                <div key={book._id} className={`gp-book-card ${isActiveBook ? 'gp-book-card--active' : ''}`}>
+                                  {isActiveBook && (
+                                    <div className="gp-book-active-badge">
+                                      📖 Active Session
+                                    </div>
+                                  )}
+
+                                  {/* Book cover placeholder */}
+                                  <div className="gp-book-cover">
+                                    <i className="fas fa-file-pdf" />
+                                  </div>
+
+                                  <div className="gp-book-info">
+                                    <div className="gp-book-title">
+                                      {book.title || book.originalName || 'Untitled'}
+                                    </div>
+                                    <div className="gp-book-meta">
+                                      <span className="gp-book-tag">
+                                        {fileSizeLabel}
+                                      </span>
+                                      {book.pageCount > 0 && (
+                                        <span className="gp-book-tag">
+                                          {book.pageCount} pages
+                                        </span>
+                                      )}
+                                      <span className="gp-book-tag">
+                                        {new Date(book.uploadedAt || book.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                      </span>
+                                    </div>
+
+                                    <div className="gp-book-actions">
+                                      {canModerate && !activeSession && (
+                                        <button
+                                          onClick={() => handleStartSession(book._id)}
+                                          disabled={startingSession === book._id}
+                                          className={`gp-book-btn gp-book-btn-start ${startingSession === book._id ? 'gp-btn--disabled' : ''}`}
+                                        >
+                                          <i className={`fas fa-${startingSession === book._id ? 'spinner fa-spin' : 'play'}`} style={{ marginRight: 6 }} />
+                                          {startingSession === book._id ? 'Starting...' : 'Start Session'}
+                                        </button>
+                                      )}
+                                      {isActiveBook && (
+                                        <button
+                                          onClick={() => navigate(`/groups/${id}/reading-room/${activeSession._id}`)}
+                                          className="gp-book-btn gp-book-btn-join"
+                                        >
+                                          <i className="fas fa-users" style={{ marginRight: 6 }} />
+                                          Join Session
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => navigate(`/groups/${id}/library/${book._id}/read`)}
+                                        className="gp-book-btn gp-book-btn-solo"
+                                      >
+                                        <i className="fas fa-book-open" style={{ marginRight: 6 }} />
+                                        Read Solo
+                                      </button>
+                                      {canModerate && (
+                                        <button
+                                          onClick={() => handleDeleteBook(book._id)}
+                                          className="gp-book-btn gp-book-btn--icon"
+                                          title="Delete book"
+                                        >
+                                          <i className="fas fa-trash" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

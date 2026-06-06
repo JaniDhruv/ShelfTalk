@@ -1,7 +1,10 @@
 <div align="center">
   <img src="frontend/public/shelftalk-logo-navbar.png" alt="ShelfTalk Logo" width="320" />
 
-  <h3>Turn every reading list into a living conversation.</h3>
+# ShelfTalk
+### *Books don't talk. We do.*
+
+Turn every reading list into a living conversation.
 
   <p>
     <a href="https://shelftalk-community.vercel.app/">🌐 Live Demo</a> •
@@ -73,7 +76,7 @@ Originally built as a college project, ShelfTalk has since been revived and sign
 | **Database** | MongoDB Atlas |
 | **Auth** | JWT (JSON Web Tokens) |
 | **File Storage** | MongoDB (GridFS / binary storage) |
-| **Deployment** | Vercel (frontend), MongoDB Atlas (DB) |
+| **Deployment** | Vercel (frontend), Render (backend), MongoDB Atlas (DB) |
 | **Analytics** | Vercel Analytics |
 
 ---

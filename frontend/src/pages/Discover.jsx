@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { getChatSocket } from '../lib/socket';
 import './Discover.css';
 
 const buildPresence = (user) => {
@@ -222,6 +223,21 @@ export default function Discover() {
   useEffect(() => {
     if (activeTab === 'clubs') fetchClubs();
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!user || !user._id) return;
+    const socket = getChatSocket(user._id);
+    if (!socket) return;
+    
+    const handleInvite = (payload) => {
+      fetchClubs();
+    };
+
+    socket.on('group:invite', handleInvite);
+    return () => {
+      socket.off('group:invite', handleInvite);
+    };
+  }, [user]);
 
   // Users list without the logged-in user
   const visibleUsers = React.useMemo(() => {

@@ -296,6 +296,12 @@ export const inviteUser = async (req, res) => {
     const exists = group.invites.find(i => i.to.toString() === toUserId);
     if (!exists) group.invites.push({ to: toUserId, from: actorId });
     await group.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user:${toUserId}`).emit('group:invite', { group });
+    }
+
     res.status(200).json({ message: 'Invite sent', group });
   } catch (error) {
     res.status(500).json({ message: error.message });

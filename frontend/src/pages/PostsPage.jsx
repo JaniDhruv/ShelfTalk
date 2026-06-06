@@ -281,16 +281,24 @@ const CommentItem = ({
   );
 };
 
-let globalPostsCache = null;
-
 export default function PostsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [posts, setPosts] = useState(globalPostsCache || []);
+  
+  // Initialize from sessionStorage if available
+  const [posts, setPosts] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('st_posts_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  
   const [savedPosts, setSavedPosts] = useState(new Set());
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [postsLoading, setPostsLoading] = useState(!globalPostsCache);
+  const [postsLoading, setPostsLoading] = useState(() => !sessionStorage.getItem('st_posts_cache'));
   const [error, setError] = useState('');
   // Active section for navigation: create | all | my | liked
   const [activeSection, setActiveSection] = useState('all');
@@ -389,13 +397,16 @@ export default function PostsPage() {
 
   useEffect(() => {
     if (posts.length > 0) {
-      globalPostsCache = posts;
+      try {
+        sessionStorage.setItem('st_posts_cache', JSON.stringify(posts));
+      } catch (e) {}
     }
   }, [posts]);
 
   const fetchPosts = async () => {
     try {
-      if (!globalPostsCache) {
+      const hasCache = !!sessionStorage.getItem('st_posts_cache');
+      if (!hasCache) {
         setPostsLoading(true);
       }
       const response = await fetch(`${API_BASE}/api/posts`);
@@ -425,12 +436,15 @@ export default function PostsPage() {
           commentCount: counts[post._id] || 0
         }));
         setPosts(postsWithCounts);
-        globalPostsCache = postsWithCounts;
+        try {
+          sessionStorage.setItem('st_posts_cache', JSON.stringify(postsWithCounts));
+        } catch (e) {}
       } else {
-        if (!globalPostsCache) setError('Failed to load posts');
+        if (!hasCache) setError('Failed to load posts');
       }
     } catch (err) {
-      if (!globalPostsCache) setError('Something went wrong while loading posts');
+      const hasCache = !!sessionStorage.getItem('st_posts_cache');
+      if (!hasCache) setError('Something went wrong while loading posts');
     } finally {
       setPostsLoading(false);
     }

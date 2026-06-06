@@ -616,26 +616,31 @@ export default function Chat() {
   const createDirectMessage = async (targetUserId) => {
     if (!userId) return;
     setIsCreatingChat(true);
-    const socket = socketRef.current || getChatSocket(userId);
-    socketRef.current = socket;
 
-    socket.timeout(8000).emit('chat:createDm', {
-      userId,
-      participants: [userId, targetUserId],
-    }, (error, response) => {
-      if (!error && response?.ok) {
-        const newChat = response.conversation;
+    try {
+      const response = await fetch(`${API_BASE}/api/chat/conversations/dm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participants: [userId, targetUserId] })
+      });
+
+      if (response.ok) {
+        const newChat = await response.json();
         upsertConversation(newChat);
-        setActiveChat(newChat);
+        setTimeout(() => setActiveChat(newChat), 0);
         setShowNewChatModal(false);
         setSearchUsers('');
         setFoundUsers([]);
       } else {
-        alert(response?.message || 'Unable to start chat right now.');
+        const errorData = await response.json();
+        alert(errorData.message || 'Unable to start chat right now.');
       }
-
+    } catch (error) {
+      console.error('Error creating DM:', error);
+      alert('Network error. Unable to start chat.');
+    } finally {
       setIsCreatingChat(false);
-    });
+    }
   };
 
   useEffect(() => {

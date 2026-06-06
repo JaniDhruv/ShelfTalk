@@ -709,7 +709,6 @@ export default function Chat() {
 
   const handleEmojiClick = (emoji) => {
     setMessage(prev => prev + emoji);
-    setShowEmojiPicker(false);
   };
 
   const renderTextWithLinks = (text) => {

@@ -142,8 +142,10 @@ export default function Profile() {
     { key: 'favorites', label: 'Favorites', icon: 'fas fa-star' },
     { key: 'activity', label: 'Activity', icon: 'fas fa-stream' },
     { key: 'clubs', label: 'Clubs', icon: 'fas fa-users' },
-    { key: 'diary', label: 'Diary', icon: 'fas fa-book-open' },
   ];
+  if (isOwnProfile) {
+    navSections.push({ key: 'diary', label: 'Diary', icon: 'fas fa-book-open' });
+  }
 
   const favoriteGenres = Array.isArray(profileData?.favoriteGenres)
     ? profileData.favoriteGenres

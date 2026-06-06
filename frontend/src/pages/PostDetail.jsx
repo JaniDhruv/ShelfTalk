@@ -116,13 +116,19 @@ export default function PostDetail() {
           fetch(`${API_BASE}/api/posts/${id}`),
           fetch(`${API_BASE}/api/comments/post/${id}`)
         ]);
+        
+        if (pRes.status === 404) {
+          setPost(null);
+          return;
+        }
+        
         if (!pRes.ok) throw new Error('Failed to load post');
         const p = await pRes.json();
         const c = cRes.ok ? await cRes.json() : [];
         setPost(p);
         setComments(c);
       } catch (e) {
-        setError(e.message || 'Failed to load');
+        setError('This post may have been deleted or is currently unavailable.');
       } finally {
         setLoading(false);
       }

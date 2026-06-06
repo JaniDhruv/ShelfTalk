@@ -48,9 +48,7 @@ export default function Discover() {
   const [activeTab, setActiveTab] = useState('users');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenres, setSelectedGenres] = useState([]);
-  const [selectedAuthors, setSelectedAuthors] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
-  const [languagesFilter, setLanguagesFilter] = useState('');
   const [sortBy, setSortBy] = useState('username');
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -109,8 +107,6 @@ export default function Discover() {
     if (searchQuery) params.append('search', searchQuery);
     if (locationFilter) params.append('location', locationFilter);
     if (selectedGenres.length) params.append('genres', selectedGenres.join(','));
-    if (selectedAuthors) params.append('authors', selectedAuthors);
-    if (languagesFilter) params.append('languages', languagesFilter);
     if (sortBy) params.append('sortBy', sortBy);
     try {
       console.log('Fetching users with params:', params.toString());
@@ -124,7 +120,7 @@ export default function Discover() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, locationFilter, selectedGenres, selectedAuthors, languagesFilter, sortBy]);
+  }, [searchQuery, locationFilter, selectedGenres, sortBy]);
 
   const fetchClubs = async () => {
     try {
@@ -427,22 +423,7 @@ export default function Discover() {
                   </div>
                   <button className="sm-apply-btn" onClick={fetchUsers}>Apply</button>
                 </div>
-                <div className="sm-adv-row">
-                  <input
-                    type="text"
-                    className="sm-input"
-                    placeholder="Favorite authors"
-                    value={selectedAuthors}
-                    onChange={(e) => setSelectedAuthors(e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    className="sm-input"
-                    placeholder="Languages"
-                    value={languagesFilter}
-                    onChange={(e) => setLanguagesFilter(e.target.value)}
-                  />
-                </div>
+
                 <div className="genre-filters">
                   <h4>Favorite Genres</h4>
                   <div className="genre-tags">
@@ -473,7 +454,7 @@ export default function Discover() {
                     <div className="sm-empty-icon"><i className="fas fa-users"></i></div>
                     <h5>No users found</h5>
                     <p>Try adjusting your search or filters</p>
-                    <button className="sm-apply-btn" onClick={() => { setSearchQuery(''); setLocationFilter(''); setSelectedGenres([]); setSelectedAuthors(''); setLanguagesFilter(''); setSortBy('username'); setOnlineOnly(false); fetchUsers(); }}>
+                    <button className="sm-apply-btn" onClick={() => { setSearchQuery(''); setLocationFilter(''); setSelectedGenres([]); setSortBy('username'); setOnlineOnly(false); fetchUsers(); }}>
                       <i className="fas fa-sync-alt"></i> Reset Filters
                     </button>
                   </div>

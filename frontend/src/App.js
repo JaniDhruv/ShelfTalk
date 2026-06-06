@@ -25,6 +25,11 @@ function AppContent() {
   const location = useLocation();
   const hideNavbar = location.pathname === '/login' || location.pathname === '/signup';
 
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   return (
     <>
       {!hideNavbar && <NavBar />}

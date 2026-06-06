@@ -3,6 +3,27 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './PostsPage.css';
 import './Discover.css';
+import './BookThemePosts.css';
+
+const renderTextWithQuote = (text, pClassName = "") => {
+  if (!text) return null;
+  if (typeof text === 'string' && text.trim().startsWith('/quote ')) {
+    const content = text.replace('/quote ', '').trim();
+    const parts = content.split(' - ');
+    const quoteText = parts[0];
+    const authorText = parts.length > 1 ? parts.slice(1).join(' - ') : 'Unknown Author';
+    return (
+      <div style={{ display: 'flex', justifyContent: 'flex-start', width: '100%', margin: '10px 0' }}>
+        <div className="book-quote-card" style={{ maxWidth: '400px' }}>
+          <div className="book-quote-icon">📖</div>
+          <div className="book-quote-text">"{quoteText.trim()}"</div>
+          <div className="book-quote-author">{authorText.trim()}</div>
+        </div>
+      </div>
+    );
+  }
+  return pClassName ? <p className={pClassName}>{text}</p> : <p>{text}</p>;
+};
 
 const buildPresence = (user) => {
   const profile = user?.profile;
@@ -284,28 +305,8 @@ export default function PostDetail() {
           </div>
         ) : (
           <article className="post-card">
+          <div className="post-card-dog-ear"></div>
           <div className="post-header">
-            <div className="post-author">
-              <div className="post-author-avatar">
-                {post.author?.username ? post.author.username[0].toUpperCase() : 'U'}
-              </div>
-              <div className="post-author-info">
-                <h4>{post.author?.username || 'Unknown User'}</h4>
-                <p>{new Date(post.createdAt).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit'
-                })}</p>
-                <div
-                  className={`presence-pill ${authorPresence.isOnline ? 'online' : 'offline'}`}
-                  title={authorPresence.isOnline ? 'User is online' : (authorPresence.lastSeen ? `Last seen ${authorPresence.lastSeen.toLocaleString()}` : 'User is offline')}
-                >
-                  <span className={`status-dot ${authorPresence.isOnline ? 'online' : 'offline'}`}></span>
-                  <span>{presenceLabel}</span>
-                </div>
-              </div>
-            </div>
             <div className="post-time">
               {user && post.author?._id === user._id && (
                 <div className="post-actions-menu">
@@ -316,8 +317,16 @@ export default function PostDetail() {
           </div>
 
           <div className="post-content">
-            <p>{post.content}</p>
+            {renderTextWithQuote(post.content)}
           </div>
+
+          {post.group && (
+            <div className="post-group-tag">
+              <span className="post-group-icon">📚</span>
+              <span className="post-group-name">{post.group.name}</span>
+              <Link to={`/groups/${post.group._id || post.group.id}`} className="post-group-join-btn" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>View Group</Link>
+            </div>
+          )}
 
           <div className="post-actions">
             {(() => {
@@ -326,13 +335,18 @@ export default function PostDetail() {
                 const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
                 return id === uid;
               });
+              const isOwnPost = uid && ((post.author?._id || post.author) === uid);
               return (
                 <button
-                  className={`action-btn btn-like ${isPostLiked ? 'liked' : ''} ${isGuest ? 'guest-locked' : ''}`}
+                  type="button"
+                  className={`ink-stamp-btn ${isPostLiked ? 'stamped' : ''} ${isGuest ? 'guest-locked' : ''}`}
                   onClick={handleLike}
+                  disabled={isOwnPost}
+                  style={{ opacity: isOwnPost ? 0.5 : 1, cursor: isOwnPost ? 'not-allowed' : 'pointer' }}
+                  aria-disabled={isGuest}
+                  title={isGuest ? 'Sign in to stamp posts' : (isOwnPost ? 'Cannot stamp your own post' : undefined)}
                 >
-                  <i className={`${isPostLiked ? 'fas fa-heart' : 'far fa-heart'}`}></i>
-                  <span>{post.likes?.length || 0}</span>
+                  {isPostLiked ? 'STAMPED' : 'STAMP'} {post.likes?.length > 0 ? `(${post.likes.length})` : '(0)'}
                 </button>
               );
             })()}
@@ -353,6 +367,12 @@ export default function PostDetail() {
               <i className="fas fa-share"></i>
               <span>Share</span>
             </button>
+          </div>
+
+          <div className="post-book-byline">
+            <span>— written by <Link to={`/profile/${post.author?._id}`} className="post-author-link">{post.author?.username || 'Unknown Author'}</Link></span>
+            <span> · </span>
+            <span>{new Date(post.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
           </div>
 
           {/* Comments Section - Always Shown */}
@@ -379,7 +399,7 @@ export default function PostDetail() {
                     <textarea
                       value={commentText}
                       onChange={(e) => setCommentText(e.target.value)}
-                      placeholder="Write a comment..."
+                      placeholder="Write a comment... (Type /quote Text - Author)"
                       className="comment-textarea"
                       rows={2}
                       maxLength={500}
@@ -511,14 +531,13 @@ function CommentItem({ comment, level = 0, currentUser, onGuestAction }) {
             })}
           </span>
         </div>
-        <p className="comment-text">{comment.text}</p>
+        {renderTextWithQuote(comment.text, "comment-text")}
         <div className="comment-actions-bar">
           <button
-            className={`comment-action-btn btn-like btn-like-sm ${isLiked ? 'liked' : ''} ${isGuest ? 'guest-locked' : ''}`}
+            className={`ink-stamp-btn comment-stamp-btn ${isLiked ? 'stamped' : ''} ${isGuest ? 'guest-locked' : ''}`}
             onClick={() => handleLikeComment(comment._id)}
           >
-            <i className={`${isLiked ? 'fas fa-heart' : 'far fa-heart'}`}></i>
-            {comment.likes?.length > 0 && <span>{comment.likes.length}</span>}
+            {isLiked ? 'STAMPED' : 'STAMP'} {comment.likes?.length > 0 && `(${comment.likes.length})`}
           </button>
 
           <button
@@ -557,7 +576,7 @@ function CommentItem({ comment, level = 0, currentUser, onGuestAction }) {
                 <textarea
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  placeholder={`Reply to ${comment.author?.username}...`}
+                  placeholder={`Reply to ${comment.author?.username}... (Type /quote Text - Author)`}
                   className="themed-textarea"
                 />
                 <div className="form-actions">

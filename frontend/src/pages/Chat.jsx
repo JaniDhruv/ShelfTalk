@@ -737,7 +737,8 @@ export default function Chat() {
         <div onClick={() => {
           try {
             const urlObj = new URL(url);
-            if (urlObj.hostname === window.location.hostname) {
+            // Allow seamless local testing of links generated on the deployed Vercel app
+            if (urlObj.hostname === window.location.hostname || urlObj.hostname === 'shelftalk-community.vercel.app' || urlObj.hostname.includes('vercel.app')) {
               navigate(urlObj.pathname + urlObj.search + urlObj.hash);
               return;
             }

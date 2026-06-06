@@ -170,10 +170,16 @@ cd backend && npm install && npm run dev
 ```
 Runs on **http://localhost:5000**
 
-### Step 5 — Start Frontend
+### Step 5 — Start Frontend (React)
 
+PowerShell (single line):
+```powershell
+cd frontend; npm install; npm install @fortawesome/fontawesome-free --save; npm run dev
+```
+
+POSIX / Git Bash / WSL (single line):
 ```bash
-cd frontend && npm install && npm run dev
+cd frontend && npm install && npm install @fortawesome/fontawesome-free --save && npm run dev
 ```
 Runs on **http://localhost:3000**
 

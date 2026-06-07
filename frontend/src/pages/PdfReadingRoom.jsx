@@ -90,6 +90,78 @@ function AmbientEmbers() {
   );
 }
 
+function LeaderboardSection({ sortedParticipants, pageCount, userId, myPage }) {
+  return (
+    <div className="pdf-leaderboard-container">
+      <div className="leaderboard-header">
+        <h2>🏆 Reading Leaderboard</h2>
+        <p>See who is leading the pack and where everyone is in the book.</p>
+      </div>
+      
+      <div className="leaderboard-grid">
+        <div className="leaderboard-rankings">
+          <h3>Top Readers</h3>
+          <div className="leaderboard-list">
+            {sortedParticipants.map((p, idx) => {
+              const isYou = getEntityId(p.userId) === userId;
+              const pPage = isYou ? myPage : Number(p.currentPage || 1);
+              const finished = Boolean(p.completedAt);
+              const pct = pageCount > 0 ? Math.min(100, Math.round((pPage / pageCount) * 100)) : 0;
+              
+              let rankClass = '';
+              if (idx === 0) rankClass = 'rank-gold';
+              else if (idx === 1) rankClass = 'rank-silver';
+              else if (idx === 2) rankClass = 'rank-bronze';
+
+              return (
+                <div key={getEntityId(p.userId)} className={`leaderboard-card ${rankClass} ${isYou ? 'is-you' : ''}`}>
+                  <div className="rank-badge">#{idx + 1}</div>
+                  <div className="presence-avatar" style={{ background: avatarColor(idx) }}>
+                    {(p.username?.[0] || 'R').toUpperCase()}
+                  </div>
+                  <div className="leaderboard-user-info">
+                    <strong>{p.username} {isYou && '(You)'}</strong>
+                    <span>{finished ? 'Finished 🎉' : `Page ${pPage} of ${pageCount || '?'}`}</span>
+                  </div>
+                  <div className="leaderboard-progress-ring">
+                    {pct}%
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="leaderboard-stats">
+          <h3>Community Progress Heatmap</h3>
+          <div className="heatmap-strip">
+            {Array.from({ length: pageCount }, (_, i) => {
+              const pageNum = i + 1;
+              const readersOnPage = sortedParticipants.filter(p => {
+                const isYou = getEntityId(p.userId) === userId;
+                const pPage = isYou ? myPage : Number(p.currentPage || 1);
+                return pPage === pageNum;
+              }).length;
+              return (
+                <div
+                  key={pageNum}
+                  className="heatmap-cell"
+                  title={`Page ${pageNum}: ${readersOnPage} reader${readersOnPage !== 1 ? 's' : ''}`}
+                  style={{
+                    opacity: readersOnPage > 0 ? Math.min(1, 0.3 + (readersOnPage * 0.35)) : 0.4,
+                    backgroundColor: readersOnPage > 0 ? '#8b1a1a' : '#e0c9a6'
+                  }}
+                />
+              );
+            })}
+          </div>
+          <p className="heatmap-caption">Visualizing where everyone is clustered across the book.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PdfReadingRoom() {
   const { groupId, sessionId } = useParams();
   const navigate = useNavigate();
@@ -119,6 +191,7 @@ export default function PdfReadingRoom() {
   const [annotationsExpanded, setAnnotationsExpanded] = useState(false);
 
   // Annotations
+  const [activeTab, setActiveTab] = useState('room'); // 'room' | 'leaderboard'
   const [reactionEmoji, setReactionEmoji] = useState(REACTION_PRESET[0]);
   const [reactionNote, setReactionNote] = useState('');
 
@@ -136,32 +209,26 @@ export default function PdfReadingRoom() {
 
   const sortedParticipants = useMemo(() => {
     if (!session?.participants) return [];
+    const cp = Number(currentPage || 1);
     return [...session.participants].sort((a, b) => {
+      const aIsYou = getEntityId(a.userId) === userId;
+      const bIsYou = getEntityId(b.userId) === userId;
+      const aPage = aIsYou ? cp : Number(a.currentPage || 1);
+      const bPage = bIsYou ? cp : Number(b.currentPage || 1);
       const aFinished = a.completedAt ? 1 : 0;
       const bFinished = b.completedAt ? 1 : 0;
       if (aFinished !== bFinished) return bFinished - aFinished;
-      return (b.currentPage || 1) - (a.currentPage || 1);
+      return bPage - aPage;
     });
-  }, [session]);
+  }, [session, userId, currentPage]);
 
   const visibleAnnotations = useMemo(() => {
     if (!session?.annotations) return [];
     const cp = Number(currentPage || 1);
     return session.annotations
-      .filter((a) => Number(a.page || 0) <= cp)
-      .sort((a, b) => Number(b.page || 0) - Number(a.page || 0) || new Date(b.createdAt) - new Date(a.createdAt));
+      .filter((a) => Number(a.page || 0) === cp)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [session, currentPage]);
-
-  const heatmapData = useMemo(() => {
-    if (!session?.participants || !pageCount) return [];
-    const counts = new Array(pageCount).fill(0);
-    session.participants.forEach((p) => {
-      const pg = Math.min(Number(p.currentPage || 1), pageCount) - 1;
-      if (pg >= 0) counts[pg]++;
-    });
-    const max = Math.max(...counts, 1);
-    return counts.map((c) => c / max);
-  }, [session, pageCount]);
 
   // ---- Notifications ----
   const pushNotify = useCallback((message, tone = 'info') => {
@@ -223,7 +290,8 @@ export default function PdfReadingRoom() {
       const container = canvas.parentElement;
       const containerWidth = container?.clientWidth || 800;
       const unscaledViewport = page.getViewport({ scale: 1 });
-      const scale = Math.min((containerWidth - 20) / unscaledViewport.width, 1.8);
+      const scaleW = (containerWidth - 40) / (unscaledViewport.width || 1);
+      const scale = Math.max(0.1, Math.min(scaleW, 1.8));
       const viewport = page.getViewport({ scale });
 
       canvas.width = viewport.width;
@@ -248,15 +316,6 @@ export default function PdfReadingRoom() {
     if (page !== currentPage) {
       setIsTurning(true);
       setTimeout(() => setIsTurning(false), 400);
-
-      // Milestone Toasts
-      if (page === 10 && currentPage < 10) pushNotify("📖 10 pages deep — you're in the story now", 'success');
-      else if (pageCount > 0) {
-        const pct = page / pageCount;
-        const oldPct = currentPage / pageCount;
-        if (pct >= 0.25 && oldPct < 0.25) pushNotify("⚡ A quarter through — the plot thickens", 'success');
-        else if (pct >= 0.50 && oldPct < 0.50) pushNotify("🔥 Halfway — no turning back now", 'success');
-      }
     }
     setCurrentPage(page);
 
@@ -584,35 +643,18 @@ export default function PdfReadingRoom() {
 
         {error && <div className="reading-room-banner reading-room-banner-error">{error}</div>}
 
-        {/* Main single-column layout */}
-        <div className="pdf-room-layout">
-          {/* Presence Strip */}
-          <div className="presence-strip">
-            {sortedParticipants.map((p, idx) => {
-              const pPage = Number(p.currentPage || 1);
-              const isYou = getEntityId(p.userId) === userId;
-              const finished = Boolean(p.completedAt);
-              const pct = pageCount > 0 ? Math.min(100, Math.round((pPage / pageCount) * 100)) : 0;
-              const isRecentlyActive = lastActiveUserId === getEntityId(p.userId);
-
-              return (
-                <div key={getEntityId(p.userId)} className="presence-card" style={isYou ? { borderColor: 'rgba(201,168,76,0.6)' } : {}}>
-                  <div className={`presence-avatar ${isRecentlyActive ? 'recently-active' : ''}`} style={{ background: avatarColor(idx) }}>
-                    {(p.username?.[0] || 'R').toUpperCase()}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#fdfaf6', fontWeight: 600 }}>{p.username}{isYou ? ' (you)' : ''}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: '0.65rem', color: '#c9a84c' }}>{finished ? '✅ Finished' : `p.${pPage}`}</span>
-                      <div className="presence-mini-progress">
-                        <div className="presence-mini-fill" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+        {/* Tab Toggle */}
+        <div className="room-tab-toggle-container">
+          <div className={`room-tab-btn ${activeTab === 'room' ? 'active' : ''}`} onClick={() => setActiveTab('room')}>
+            📖 Reading Room
           </div>
+          <div className={`room-tab-btn ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboard')}>
+            🏆 Leaderboard
+          </div>
+        </div>
+
+        {activeTab === 'room' && (
+          <div className="pdf-room-layout">
 
           {/* PDF Viewer */}
           <div className="pdf-viewer-panel">
@@ -621,11 +663,19 @@ export default function PdfReadingRoom() {
               <span className="page-indicator-badge">PAGE {myPage}{pageCount ? ` OF ${pageCount}` : ''}</span>
             </div>
 
-            <div style={{ height: 4, background: 'rgba(114,47,55,0.06)' }}>
-              <div className="reading-room-progress-fill" style={{ width: `${progress}%` }} />
-            </div>
-
             <div className={`pdf-canvas-wrap ${isTurning ? 'turning' : ''}`} style={{ position: 'relative' }}>
+              {/* Click Zones */}
+              <div
+                className="pdf-click-zone pdf-click-zone-left"
+                onClick={() => { if (myPage > 1) commitPage(myPage - 1); }}
+                title="Previous page"
+              />
+              <div
+                className="pdf-click-zone pdf-click-zone-right"
+                onClick={() => { if (!pageCount || myPage < pageCount) commitPage(myPage + 1); }}
+                title="Next page"
+              />
+
               <canvas ref={canvasRef} />
 
               {/* Emoji Pins on Right Edge */}
@@ -704,7 +754,7 @@ export default function PdfReadingRoom() {
               <h3 style={{ margin: '0 0 16px', fontFamily: 'Crimson Text', color: '#c9a84c', fontSize: '1.2rem' }}>
                 📌 {visibleAnnotations.length} Annotation{visibleAnnotations.length !== 1 ? 's' : ''} on p.{myPage}
               </h3>
-              
+
               <div className="annotations-content">
                 {visibleAnnotations.length === 0 && (
                   <div className="annotation-empty-state">
@@ -718,8 +768,8 @@ export default function PdfReadingRoom() {
                       <div key={`${a.createdAt || idx}-${idx}`} className="pdf-annotation-item" style={{ background: 'rgba(253,250,246,0.1)', borderColor: 'rgba(201,168,76,0.2)' }}>
                         <span className="pdf-annotation-emoji">{a.emoji}</span>
                         <div className="pdf-annotation-body">
-                          <strong style={{ color: '#c9a84c' }}>{a.username}</strong>
-                          {a.note ? <p style={{ color: '#fdfaf6' }}>{a.note}</p> : null}
+                          <strong style={{ color: '#8b5e00' }}>{a.username}</strong>
+                          {a.note ? <p style={{ color: '#1a1a1a', margin: '4px 0 0' }}>{a.note}</p> : null}
                         </div>
                       </div>
                     ))}
@@ -750,7 +800,7 @@ export default function PdfReadingRoom() {
                       onChange={(e) => setReactionNote(e.target.value)}
                       placeholder={`Note for p.${myPage}...`}
                       onKeyDown={(e) => { if (e.key === 'Enter') dropAnnotation(); }}
-                      style={{ background: 'rgba(253, 250, 246, 0.08)', color: '#fdfaf6', border: '1px solid rgba(201,168,76,0.3)' }}
+                      style={{ background: 'rgba(255, 254, 247, 0.9)', color: '#1a1a1a', border: '1px solid rgba(201,168,76,0.8)' }}
                     />
                     <button type="button" onClick={dropAnnotation} style={{ background: '#6b3a2a', color: '#c9a84c', border: '1px solid #c9a84c' }}>
                       {reactionEmoji} Add Note
@@ -761,6 +811,11 @@ export default function PdfReadingRoom() {
             </div>
           </div>
         </div>
+        )}
+
+        {activeTab === 'leaderboard' && (
+          <LeaderboardSection sortedParticipants={sortedParticipants} pageCount={pageCount} userId={userId} myPage={myPage} />
+        )}
       </div>
 
       {/* Toast notifications */}

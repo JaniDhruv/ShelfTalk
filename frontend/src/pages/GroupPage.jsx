@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/ConfirmationModal';
 import GuestGate from '../components/GuestGate';
@@ -160,7 +160,9 @@ export default function GroupPage() {
   const [posting, setPosting] = useState(false);
   const [commentsByPost, setCommentsByPost] = useState({});
   const [showComments, setShowComments] = useState({});
-  const [activeTab, setActiveTab] = useState('forum'); // forum, chat, library, members
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'forum'; // forum, chat, library, members
+  const setActiveTab = (tab) => setSearchParams({ tab });
 
   // Library states
   const [libraryBooks, setLibraryBooks] = useState([]);
@@ -1135,7 +1137,7 @@ export default function GroupPage() {
 
 
           {/* Tabbed Navigation */}
-          <div className="gp-tabs-wrap">
+          <div className="gp-tabs-wrap" style={{ position: 'sticky', top: '76px', zIndex: 100, backgroundColor: '#fdfcf7', paddingTop: '10px' }}>
             <div className="gp-rule" style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} />
             <div className="gp-tabs">
               {[

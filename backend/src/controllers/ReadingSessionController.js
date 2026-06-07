@@ -332,7 +332,13 @@ export const addReaction = async (req, res) => {
       return res.status(403).json({ message: 'Join the reading room before posting reactions' });
     }
     if (numericPage > Number(participant.currentPage || 0)) {
-      return res.status(403).json({ message: 'You cannot react to pages you have not reached yet' });
+      participant.currentPage = numericPage;
+      participant.lastActive = new Date();
+      if (Number(session.pageCount || 0) > 0 && numericPage >= Number(session.pageCount)) {
+        participant.completedAt = participant.completedAt || new Date();
+      } else {
+        participant.completedAt = null;
+      }
     }
 
     const reaction = {
@@ -451,8 +457,18 @@ export const handleSocketReaction = async ({ sessionId, userId, page, emoji, not
   if (!FIXED_REACTIONS.includes(emoji)) {
     throw Object.assign(new Error('Unsupported reaction emoji'), { status: 400 });
   }
-  if (!Number.isFinite(numericPage) || numericPage < 1 || numericPage > Number(participant.currentPage || 0)) {
-    throw Object.assign(new Error('You cannot react to pages you have not reached yet'), { status: 403 });
+  if (!Number.isFinite(numericPage) || numericPage < 1) {
+    throw Object.assign(new Error('Invalid page number'), { status: 400 });
+  }
+
+  if (numericPage > Number(participant.currentPage || 0)) {
+    participant.currentPage = numericPage;
+    participant.lastActive = new Date();
+    if (Number(session.pageCount || 0) > 0 && numericPage >= Number(session.pageCount)) {
+      participant.completedAt = participant.completedAt || new Date();
+    } else {
+      participant.completedAt = null;
+    }
   }
 
   session.annotations.push({

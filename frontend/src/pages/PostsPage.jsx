@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import './PostsPage.css';
 import './Discover.css';
 import './BookThemePosts.css';
@@ -65,9 +65,9 @@ const renderTextWithQuote = (text, pClassName = "") => {
 };
 
 // Recursive comment component
-const CommentItem = ({ 
-  comment, 
-  postId, 
+const CommentItem = ({
+  comment,
+  postId,
   level = 0,
   user,
   userId,
@@ -96,9 +96,9 @@ const CommentItem = ({
   const viewerId = userId;
   const likedByViewer = viewerId
     ? (comment.likes || []).some(l => {
-        const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
-        return id === viewerId;
-      })
+      const id = (typeof l === 'string' || typeof l === 'number') ? l : (l?._id || l?.id);
+      return id === viewerId;
+    })
     : false;
 
   return (
@@ -135,7 +135,7 @@ const CommentItem = ({
             </div>
           )}
         </div>
-        
+
         {isEditing ? (
           <div className="edit-form-container">
             <textarea
@@ -162,7 +162,7 @@ const CommentItem = ({
         ) : (
           renderTextWithQuote(comment.text, "comment-text")
         )}
-        
+
         <div className="comment-actions-bar">
           {(() => {
             const uid = user?._id || user?.id;
@@ -248,10 +248,10 @@ const CommentItem = ({
         {hasReplies && isShowingReplies && (
           <div style={{ marginTop: '12px' }}>
             {comment.replies.map(reply => (
-              <CommentItem 
-                key={reply._id} 
-                comment={reply} 
-                postId={postId} 
+              <CommentItem
+                key={reply._id}
+                comment={reply}
+                postId={postId}
                 level={level + 1}
                 user={user}
                 userId={userId}
@@ -284,7 +284,7 @@ const CommentItem = ({
 export default function PostsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   // Initialize from sessionStorage if available
   const [posts, setPosts] = useState(() => {
     try {
@@ -294,15 +294,17 @@ export default function PostsPage() {
       return [];
     }
   });
-  
+
   const [savedPosts, setSavedPosts] = useState(new Set());
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [postsLoading, setPostsLoading] = useState(() => !sessionStorage.getItem('st_posts_cache'));
   const [error, setError] = useState('');
   // Active section for navigation: create | all | my | liked
-  const [activeSection, setActiveSection] = useState('all');
-  
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeSection = searchParams.get('tab') || 'all';
+  const setActiveSection = (tab) => setSearchParams({ tab });
+
   // Comment state
   const [comments, setComments] = useState({});
   const [commentText, setCommentText] = useState({});
@@ -368,7 +370,7 @@ export default function PostsPage() {
       }
     }
   };
-  
+
 
   // Fetch posts
   useEffect(() => {
@@ -390,7 +392,7 @@ export default function PostsPage() {
           const data = await resp.json();
           setConversations(data);
         }
-      } catch {}
+      } catch { }
     };
     loadConversations();
   }, [userId, API_BASE]);
@@ -399,7 +401,7 @@ export default function PostsPage() {
     if (posts.length > 0) {
       try {
         sessionStorage.setItem('st_posts_cache', JSON.stringify(posts));
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [posts]);
 
@@ -413,7 +415,7 @@ export default function PostsPage() {
       if (response.ok) {
         const data = await response.json();
         setPosts(data);
-        
+
         // Fetch comment counts for each post
         const counts = {};
         for (const post of data) {
@@ -429,7 +431,7 @@ export default function PostsPage() {
             counts[post._id] = 0;
           }
         }
-        
+
         // Update posts with comment counts
         const postsWithCounts = data.map(post => ({
           ...post,
@@ -438,7 +440,7 @@ export default function PostsPage() {
         setPosts(postsWithCounts);
         try {
           sessionStorage.setItem('st_posts_cache', JSON.stringify(postsWithCounts));
-        } catch (e) {}
+        } catch (e) { }
       } else {
         if (!hasCache) setError('Failed to load posts');
       }
@@ -460,7 +462,7 @@ export default function PostsPage() {
 
   const handleCreatePost = async (e) => {
     e.preventDefault();
-    
+
     if (!userId) {
       requireAuth('Sign in to share a post');
       setError('You must be logged in to create a post');
@@ -479,9 +481,9 @@ export default function PostsPage() {
       const response = await fetch(`${API_BASE}/api/posts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          content: content.trim(), 
-          author: userId 
+        body: JSON.stringify({
+          content: content.trim(),
+          author: userId
         }),
       });
 
@@ -550,9 +552,9 @@ export default function PostsPage() {
       const res = await fetch(`${API_BASE}/api/posts/${postId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           content: editContent.trim(),
-          authorId: userId 
+          authorId: userId
         })
       });
 
@@ -598,7 +600,7 @@ export default function PostsPage() {
         });
 
         if (!res.ok) throw new Error('Failed to delete post');
-        
+
         setPosts(prev => prev.filter(p => p._id !== deleteTarget.id));
       } else if (deleteTarget.type === 'comment') {
         const res = await fetch(`${API_BASE}/api/comments/${deleteTarget.id}`, {
@@ -608,15 +610,15 @@ export default function PostsPage() {
         });
 
         if (!res.ok) throw new Error('Failed to delete comment');
-        
+
         setComments(prev => {
           const postComments = prev[deleteTarget.postId] || [];
           return {
-             ...prev,
-             [deleteTarget.postId]: postComments.filter(c => c._id !== deleteTarget.id).map(c => ({
-               ...c,
-               replies: (c.replies || []).filter(r => r._id !== deleteTarget.id)
-             }))
+            ...prev,
+            [deleteTarget.postId]: postComments.filter(c => c._id !== deleteTarget.id).map(c => ({
+              ...c,
+              replies: (c.replies || []).filter(r => r._id !== deleteTarget.id)
+            }))
           };
         });
         setPosts(prev => prev.map(p => p._id === deleteTarget.postId ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p));
@@ -665,7 +667,7 @@ export default function PostsPage() {
   const handleToggleComments = async (postId) => {
     const isShowing = showComments[postId];
     setShowComments(prev => ({ ...prev, [postId]: !isShowing }));
-    
+
     if (!isShowing && !comments[postId]) {
       await fetchComments(postId);
     }
@@ -673,7 +675,7 @@ export default function PostsPage() {
 
   const handleAddComment = async (postId) => {
     const text = commentText[postId];
-    
+
     if (!userId) {
       requireAuth('Sign in to comment');
       return;
@@ -703,9 +705,9 @@ export default function PostsPage() {
           [postId]: prev[postId] ? [newCommentObj, ...prev[postId]] : [newCommentObj]
         }));
         // Update the comment count for this specific post
-        setPosts(prevPosts => 
-          prevPosts.map(post => 
-            post._id === postId 
+        setPosts(prevPosts =>
+          prevPosts.map(post =>
+            post._id === postId
               ? { ...post, commentCount: (post.commentCount || 0) + 1 }
               : post
           )
@@ -734,14 +736,14 @@ export default function PostsPage() {
         setComments(prev => {
           const postComments = prev[postId] || [];
           return {
-             ...prev,
-             [postId]: postComments.map(c => {
-               if (c._id === commentId) return { ...c, likes: data.likes };
-               if (c.replies) {
-                  return { ...c, replies: c.replies.map(r => r._id === commentId ? { ...r, likes: data.likes } : r) };
-               }
-               return c;
-             })
+            ...prev,
+            [postId]: postComments.map(c => {
+              if (c._id === commentId) return { ...c, likes: data.likes };
+              if (c.replies) {
+                return { ...c, replies: c.replies.map(r => r._id === commentId ? { ...r, likes: data.likes } : r) };
+              }
+              return c;
+            })
           };
         });
       }
@@ -769,9 +771,9 @@ export default function PostsPage() {
       const res = await fetch(`${API_BASE}/api/comments/${commentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           text: editCommentText.trim(),
-          authorId: userId 
+          authorId: userId
         })
       });
 
@@ -783,17 +785,17 @@ export default function PostsPage() {
       const payload = await res.json();
       const updatedComment = payload.data || payload.comment || payload;
       setComments(prev => {
-          const postComments = prev[postId] || [];
-          return {
-             ...prev,
-             [postId]: postComments.map(c => {
-               if (c._id === commentId) return { ...c, text: updatedComment.text, updatedAt: updatedComment.updatedAt };
-               if (c.replies) {
-                  return { ...c, replies: c.replies.map(r => r._id === commentId ? { ...r, text: updatedComment.text, updatedAt: updatedComment.updatedAt } : r) };
-               }
-               return c;
-             })
-          };
+        const postComments = prev[postId] || [];
+        return {
+          ...prev,
+          [postId]: postComments.map(c => {
+            if (c._id === commentId) return { ...c, text: updatedComment.text, updatedAt: updatedComment.updatedAt };
+            if (c.replies) {
+              return { ...c, replies: c.replies.map(r => r._id === commentId ? { ...r, text: updatedComment.text, updatedAt: updatedComment.updatedAt } : r) };
+            }
+            return c;
+          })
+        };
       });
       setEditingComment(null);
       setEditCommentText('');
@@ -860,20 +862,20 @@ export default function PostsPage() {
           const postComments = prev[postId] || [];
           return {
             ...prev,
-            [postId]: postComments.map(c => 
-              c._id === parentCommentId 
-                ? { ...c, replies: [...(c.replies || []), newReply] } 
+            [postId]: postComments.map(c =>
+              c._id === parentCommentId
+                ? { ...c, replies: [...(c.replies || []), newReply] }
                 : c
             )
           };
         });
         setReplyText('');
         setReplyingTo(null);
-        
+
         // Update the comment count for this specific post
-        setPosts(prevPosts => 
-          prevPosts.map(post => 
-            post._id === postId 
+        setPosts(prevPosts =>
+          prevPosts.map(post =>
+            post._id === postId
               ? { ...post, commentCount: (post.commentCount || 0) + 1 }
               : post
           )
@@ -977,7 +979,7 @@ export default function PostsPage() {
             }}
             aria-disabled={isGuest}
           >
-            <i className="fas fa-heart"></i> Liked {likedPostsCount > 0 && <span className="sm-badge">{likedPostsCount}</span>}
+            <i className="fas fa-heart"></i> Stamped {likedPostsCount > 0 && <span className="sm-badge">{likedPostsCount}</span>}
           </button>
         </div>
       </div>
@@ -1079,184 +1081,184 @@ export default function PostsPage() {
                   const presenceLabel = formatPresenceLabel(presence);
                   const isSaved = savedPosts.has(post._id);
                   return (
-                  <React.Fragment key={post._id}>
-                  <article className="post-card">
-                    <div 
-                      className={`bookmark-ribbon ${isSaved ? 'saved' : ''}`} 
-                      onClick={() => handleSavePost(post._id)}
-                      title={isSaved ? "Remove Bookmark" : "Bookmark Post"}
-                    >
-                      {isSaved && <i className="fas fa-bookmark bookmark-btn-icon"></i>}
-                    </div>
-                    <div className="post-card-dog-ear"></div>
-                    <div className="post-header">
-                      <div className="post-time">
-                        {user && post.author?._id === user._id && (
-                          <div className="post-actions-menu">
-                            <span className="your-post-badge">Your Post</span>
-                            <div className="post-menu-dropdown">
-                              <button className="post-menu-trigger"><i className="fas fa-ellipsis-h"></i></button>
-                              <div className="post-menu-options">
-                                <button onClick={() => handleEditPost(post)} className="post-menu-option edit">
-                                  <i className="fas fa-edit"></i><span>Edit Post</span>
-                                </button>
-                                <button onClick={() => handleDeletePost(post._id)} className="post-menu-option delete">
-                                  <i className="fas fa-trash"></i><span>Delete Post</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="post-content">
-                      {editingPost === post._id ? (
-                        <div className="edit-form-container">
-                          <textarea value={editContent} onChange={e => setEditContent(e.target.value)} className="themed-textarea" placeholder="Edit your post..." style={{ minHeight: '100px' }} />
-                          <div className="form-actions">
-                            <button onClick={() => handleSaveEdit(post._id)} className="btn-form-primary">Save</button>
-                            <button onClick={handleCancelEdit} className="btn-form-secondary">Cancel</button>
-                          </div>
+                    <React.Fragment key={post._id}>
+                      <article className="post-card">
+                        <div
+                          className={`bookmark-ribbon ${isSaved ? 'saved' : ''}`}
+                          onClick={() => handleSavePost(post._id)}
+                          title={isSaved ? "Remove Bookmark" : "Bookmark Post"}
+                        >
+                          {isSaved && <i className="fas fa-bookmark bookmark-btn-icon"></i>}
                         </div>
-                      ) : (
-                        renderTextWithQuote(post.content)
-                      )}
-                    </div>
-                    {post.group && (
-                      <div className="post-group-tag">
-                        <span className="post-group-icon">📚</span>
-                        <span className="post-group-name">{post.group.name}</span>
-                        <button className="post-group-join-btn" onClick={() => navigate(`/groups/${post.group._id}`)}>View Group</button>
-                      </div>
-                    )}
-                    <div className="post-actions">
-                      {(() => {
-                        const viewerId = userId;
-                        const isOwnPost = viewerId && ((post.author?._id || post.author) === viewerId);
-                        const isPostLiked = viewerId ? (post.likes || []).some(likeId => {
-                          const l = (typeof likeId === 'string' || typeof likeId === 'number') ? likeId : (likeId._id || likeId.id);
-                          return l === viewerId;
-                        }) : false;
-                        
-                        return (
-                          <>
-                            <button
-                              type="button"
-                              className={`ink-stamp-btn ${isPostLiked ? 'stamped' : ''} ${isGuest ? 'guest-locked' : ''}`}
-                              onClick={() => handleLike(post._id)}
-                              disabled={isOwnPost}
-                              style={{ opacity: isOwnPost ? 0.5 : 1, cursor: isOwnPost ? 'not-allowed' : 'pointer' }}
-                              aria-disabled={isGuest}
-                              title={isGuest ? 'Sign in to stamp posts' : (isOwnPost ? 'Cannot stamp your own post' : undefined)}
-                            >
-                              {isPostLiked ? 'STAMPED' : 'STAMP'} {post.likes?.length > 0 ? `(${post.likes.length})` : '(0)'}
-                            </button>
-                            <button type="button" className="action-btn comment-btn" onClick={() => handleToggleComments(post._id)}>
-                              <i className="far fa-comment"></i><span>{post.commentCount || 0}</span>
-                            </button>
-                            <button
-                              type="button"
-                              className={`action-btn share-btn ${isGuest ? 'guest-locked' : ''}`}
-                              onClick={() => handleOpenShareModal(post._id)}
-                              aria-disabled={isGuest}
-                              title={isGuest ? 'Sign in to share posts' : undefined}
-                            >
-                              <i className="fas fa-share"></i><span>Share</span>
-                            </button>
-                          </>
-                        );
-                      })()}
-                    </div>
-                    <div className="post-book-byline">
-                      <span>— written by <Link to={`/profile/${post.author?._id}`} className="post-author-link">{post.author?.username || 'Unknown Author'}</Link></span>
-                      <span> · </span>
-                      <span>{new Date(post.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
-                    </div>
-                    {showComments[post._id] && (
-                      <div className="comments-section">
-                        {isGuest ? (
-                          <div className="comment-login-prompt">
-                            <div className="comment-login-text">
-                              <i className="fas fa-lock"></i>
-                              <span>Sign in to join the discussion.</span>
-                            </div>
-                            <div className="comment-login-actions">
-                              <Link to="/login" className="btn-primary">Login</Link>
-                              <Link to="/signup" className="btn-secondary guest-signup-btn">Sign Up</Link>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="add-comment-form">
-                            <div className="comment-input-wrapper">
-                              <div className="comment-user-avatar">{user?.username ? user.username[0].toUpperCase() : 'U'}</div>
-                              <div className="comment-input-container">
-                                <textarea value={commentText[post._id] || ''} onChange={e => setCommentText(prev => ({ ...prev, [post._id]: e.target.value }))} placeholder="Write a comment... (Type /quote Text - Author)" className="comment-textarea" rows={2} maxLength={500} />
-                                <div className="comment-actions">
-                                  <span className="comment-char-count">{(commentText[post._id] || '').length}/500</span>
-                                  <button type="button" className="btn-comment-post" onClick={() => handleAddComment(post._id)} disabled={!(commentText[post._id]?.trim())}>
-                                    <i className="fas fa-paper-plane"></i> Post
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                        <div className="comments-list">
-                          {commentsLoading[post._id] ? (
-                            <div className="comments-loading">
-                              {[...Array(2)].map((_, i) => (
-                                <div key={i} className="comment-skeleton">
-                                  <div className="comment-skeleton-avatar"></div>
-                                  <div className="comment-skeleton-content">
-                                    <div className="comment-skeleton-text"></div>
-                                    <div className="comment-skeleton-actions"></div>
+                        <div className="post-card-dog-ear"></div>
+                        <div className="post-header">
+                          <div className="post-time">
+                            {user && post.author?._id === user._id && (
+                              <div className="post-actions-menu">
+                                <span className="your-post-badge">Your Post</span>
+                                <div className="post-menu-dropdown">
+                                  <button className="post-menu-trigger"><i className="fas fa-ellipsis-h"></i></button>
+                                  <div className="post-menu-options">
+                                    <button onClick={() => handleEditPost(post)} className="post-menu-option edit">
+                                      <i className="fas fa-edit"></i><span>Edit Post</span>
+                                    </button>
+                                    <button onClick={() => handleDeletePost(post._id)} className="post-menu-option delete">
+                                      <i className="fas fa-trash"></i><span>Delete Post</span>
+                                    </button>
                                   </div>
                                 </div>
-                              ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="post-content">
+                          {editingPost === post._id ? (
+                            <div className="edit-form-container">
+                              <textarea value={editContent} onChange={e => setEditContent(e.target.value)} className="themed-textarea" placeholder="Edit your post..." style={{ minHeight: '100px' }} />
+                              <div className="form-actions">
+                                <button onClick={() => handleSaveEdit(post._id)} className="btn-form-primary">Save</button>
+                                <button onClick={handleCancelEdit} className="btn-form-secondary">Cancel</button>
+                              </div>
                             </div>
-                          ) : comments[post._id]?.length > 0 ? (
-                            <>
-                              {comments[post._id].map(comment => (
-                                <CommentItem 
-                                key={comment._id} 
-                                comment={comment} 
-                                postId={post._id} 
-                                level={0}
-                                user={user}
-                                userId={userId}
-                                isGuest={isGuest}
-                                editingComment={editingComment}
-                                editCommentText={editCommentText}
-                                setEditCommentText={setEditCommentText}
-                                handleSaveEditComment={handleSaveEditComment}
-                                handleCancelEditComment={handleCancelEditComment}
-                                handleLikeComment={handleLikeComment}
-                                handleDeleteComment={handleDeleteComment}
-                                handleEditComment={handleEditComment}
-                                handleReply={handleReply}
-                                replyingTo={replyingTo}
-                                replyText={replyText}
-                                setReplyText={setReplyText}
-                                handleSubmitReply={handleSubmitReply}
-                                handleCancelReply={handleCancelReply}
-                                showReplies={showReplies}
-                                toggleReplies={toggleReplies}
-                              />
-                              ))}
-                            </>
                           ) : (
-                            <div className="no-comments">
-                              <i className="far fa-comment"></i>
-                              <p>No comments yet. Be the first to comment!</p>
-                            </div>
+                            renderTextWithQuote(post.content)
                           )}
                         </div>
-                      </div>
-                    )}
-                  </article>
-                  <div className="torn-paper-divider"></div>
-                  </React.Fragment>
-                );
+                        {post.group && (
+                          <div className="post-group-tag">
+                            <span className="post-group-icon">📚</span>
+                            <span className="post-group-name">{post.group.name}</span>
+                            <button className="post-group-join-btn" onClick={() => navigate(`/groups/${post.group._id}`)}>View Group</button>
+                          </div>
+                        )}
+                        <div className="post-actions">
+                          {(() => {
+                            const viewerId = userId;
+                            const isOwnPost = viewerId && ((post.author?._id || post.author) === viewerId);
+                            const isPostLiked = viewerId ? (post.likes || []).some(likeId => {
+                              const l = (typeof likeId === 'string' || typeof likeId === 'number') ? likeId : (likeId._id || likeId.id);
+                              return l === viewerId;
+                            }) : false;
+
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  className={`ink-stamp-btn ${isPostLiked ? 'stamped' : ''} ${isGuest ? 'guest-locked' : ''}`}
+                                  onClick={() => handleLike(post._id)}
+                                  disabled={isOwnPost}
+                                  style={{ opacity: isOwnPost ? 0.5 : 1, cursor: isOwnPost ? 'not-allowed' : 'pointer' }}
+                                  aria-disabled={isGuest}
+                                  title={isGuest ? 'Sign in to stamp posts' : (isOwnPost ? 'Cannot stamp your own post' : undefined)}
+                                >
+                                  {isPostLiked ? 'STAMPED' : 'STAMP'} {post.likes?.length > 0 ? `(${post.likes.length})` : '(0)'}
+                                </button>
+                                <button type="button" className="action-btn comment-btn" onClick={() => handleToggleComments(post._id)}>
+                                  <i className="far fa-comment"></i><span>{post.commentCount || 0}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`action-btn share-btn ${isGuest ? 'guest-locked' : ''}`}
+                                  onClick={() => handleOpenShareModal(post._id)}
+                                  aria-disabled={isGuest}
+                                  title={isGuest ? 'Sign in to share posts' : undefined}
+                                >
+                                  <i className="fas fa-share"></i><span>Share</span>
+                                </button>
+                              </>
+                            );
+                          })()}
+                        </div>
+                        <div className="post-book-byline">
+                          <span>— written by <Link to={`/profile/${post.author?._id}`} className="post-author-link">{post.author?.username || 'Unknown Author'}</Link></span>
+                          <span> · </span>
+                          <span>{new Date(post.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                        {showComments[post._id] && (
+                          <div className="comments-section">
+                            {isGuest ? (
+                              <div className="comment-login-prompt">
+                                <div className="comment-login-text">
+                                  <i className="fas fa-lock"></i>
+                                  <span>Sign in to join the discussion.</span>
+                                </div>
+                                <div className="comment-login-actions">
+                                  <Link to="/login" className="btn-primary">Login</Link>
+                                  <Link to="/signup" className="btn-secondary guest-signup-btn">Sign Up</Link>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="add-comment-form">
+                                <div className="comment-input-wrapper">
+                                  <div className="comment-user-avatar">{user?.username ? user.username[0].toUpperCase() : 'U'}</div>
+                                  <div className="comment-input-container">
+                                    <textarea value={commentText[post._id] || ''} onChange={e => setCommentText(prev => ({ ...prev, [post._id]: e.target.value }))} placeholder="Write a comment... (Type /quote Text - Author)" className="comment-textarea" rows={2} maxLength={500} />
+                                    <div className="comment-actions">
+                                      <span className="comment-char-count">{(commentText[post._id] || '').length}/500</span>
+                                      <button type="button" className="btn-comment-post" onClick={() => handleAddComment(post._id)} disabled={!(commentText[post._id]?.trim())}>
+                                        <i className="fas fa-paper-plane"></i> Post
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            <div className="comments-list">
+                              {commentsLoading[post._id] ? (
+                                <div className="comments-loading">
+                                  {[...Array(2)].map((_, i) => (
+                                    <div key={i} className="comment-skeleton">
+                                      <div className="comment-skeleton-avatar"></div>
+                                      <div className="comment-skeleton-content">
+                                        <div className="comment-skeleton-text"></div>
+                                        <div className="comment-skeleton-actions"></div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : comments[post._id]?.length > 0 ? (
+                                <>
+                                  {comments[post._id].map(comment => (
+                                    <CommentItem
+                                      key={comment._id}
+                                      comment={comment}
+                                      postId={post._id}
+                                      level={0}
+                                      user={user}
+                                      userId={userId}
+                                      isGuest={isGuest}
+                                      editingComment={editingComment}
+                                      editCommentText={editCommentText}
+                                      setEditCommentText={setEditCommentText}
+                                      handleSaveEditComment={handleSaveEditComment}
+                                      handleCancelEditComment={handleCancelEditComment}
+                                      handleLikeComment={handleLikeComment}
+                                      handleDeleteComment={handleDeleteComment}
+                                      handleEditComment={handleEditComment}
+                                      handleReply={handleReply}
+                                      replyingTo={replyingTo}
+                                      replyText={replyText}
+                                      setReplyText={setReplyText}
+                                      handleSubmitReply={handleSubmitReply}
+                                      handleCancelReply={handleCancelReply}
+                                      showReplies={showReplies}
+                                      toggleReplies={toggleReplies}
+                                    />
+                                  ))}
+                                </>
+                              ) : (
+                                <div className="no-comments">
+                                  <i className="far fa-comment"></i>
+                                  <p>No comments yet. Be the first to comment!</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </article>
+                      <div className="torn-paper-divider"></div>
+                    </React.Fragment>
+                  );
                 })}
               </>
             )}

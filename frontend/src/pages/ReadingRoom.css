@@ -641,17 +641,26 @@
   }
 }
 
-/* ===== PDF Reading Room — Vertical Layout ===== */
+/* ===== PDF Reading Room — Split Layout ===== */
 
 .pdf-room-layout {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  max-width: 680px;
-  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  grid-template-areas:
+    "presence presence"
+    "viewer sidebar";
+  gap: 24px;
+  align-items: start;
+  max-width: 100%;
+  padding: 0 40px;
+}
+
+.presence-strip {
+  grid-area: presence;
 }
 
 .pdf-viewer-panel {
+  grid-area: viewer;
   position: relative;
   border-radius: 8px 16px 16px 8px;
   background: #fcf8f2;
@@ -663,6 +672,15 @@
   flex-direction: column;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   perspective: 1500px;
+  height: calc(100vh - 120px);
+  min-height: 600px;
+}
+
+.reading-room-progress-fill {
+  height: 100%;
+  background: linear-gradient(to right, #c9a84c, #e8d08a);
+  transition: width 0.3s ease;
+  border-radius: 0 4px 4px 0;
 }
 
 /* Stacked pages left edge */
@@ -699,6 +717,20 @@
   box-shadow: inset 3px 0 6px rgba(0, 0, 0, 0.15);
 }
 
+.pdf-side-column {
+  grid-area: sidebar;
+  position: sticky;
+  top: 24px;
+  height: calc(100vh - 120px);
+  min-height: 600px;
+  overflow-y: auto;
+  border-radius: 16px;
+  background: rgba(255, 254, 247, 0.94);
+  border: 1px solid rgba(114, 47, 55, 0.12);
+  box-shadow: 0 16px 42px rgba(114, 47, 55, 0.08);
+  padding: 20px;
+}
+
 .pdf-viewer-header {
   display: flex;
   justify-content: space-between;
@@ -728,16 +760,16 @@
 }
 
 .pdf-canvas-wrap {
+  flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  min-height: 600px;
-  max-height: 75vh;
+  width: 100%;
   overflow: auto;
   background: #fdfaf6;
   position: relative;
-  transform-style: preserve-3d;
   box-shadow: inset 0 0 40px rgba(139, 69, 19, 0.05);
+  padding: 20px 0;
 }
 
 @keyframes pageFlip {
@@ -891,9 +923,6 @@
 }
 
 /* Solo Mode Specific Styles */
-.solo-layout {
-  /* Inherits flex column, max-width 680px */
-}
 
 /* ===== Heatmap Bar ===== */
 
@@ -1624,7 +1653,7 @@
 
 /* ===== Floating Nav ===== */
 .page-nav-floating {
-  position: fixed;
+  position: absolute;
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
@@ -1712,4 +1741,326 @@
   background: linear-gradient(135deg, #b83232, #8b3a3a);
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(114, 47, 55, 0.4);
+}
+
+/* ===== Floating Page Nav & Click Zones ===== */
+.page-nav-floating {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: rgba(44, 24, 16, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(201, 168, 76, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+}
+
+.pdf-click-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+  z-index: 20;
+  cursor: pointer;
+}
+
+.pdf-click-zone-left {
+  left: 0;
+}
+
+.pdf-click-zone-right {
+  right: 0;
+}
+
+/* ===== Presence Strip & Cards ===== */
+.presence-strip {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 168, 76, 0.4) transparent;
+}
+
+.presence-strip::-webkit-scrollbar {
+  height: 6px;
+}
+
+.presence-strip::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.4);
+  border-radius: 999px;
+}
+
+.presence-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 8px;
+  border-radius: 999px;
+  background: rgba(255, 254, 247, 0.94);
+  border: 1px solid rgba(114, 47, 55, 0.12);
+  box-shadow: 0 4px 12px rgba(114, 47, 55, 0.08);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.presence-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.presence-avatar.recently-active::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid #87a96b;
+  animation: presence-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes presence-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.presence-mini-progress {
+  flex: 1;
+  height: 4px;
+  background: rgba(114, 47, 55, 0.1);
+  border-radius: 99px;
+  overflow: hidden;
+  min-width: 40px;
+}
+
+.presence-mini-fill {
+  height: 100%;
+  background: linear-gradient(to right, #c9a84c, #e8d08a);
+  border-radius: 99px;
+}
+
+/* ===== Tab Toggle UI ===== */
+.room-tab-toggle-container {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: -10px auto 30px;
+  background: rgba(253, 250, 246, 0.4);
+  padding: 8px;
+  border-radius: 50px;
+  backdrop-filter: blur(8px);
+  width: max-content;
+  box-shadow: inset 0 2px 4px rgba(139, 69, 19, 0.05), 0 4px 12px rgba(114, 47, 55, 0.08);
+}
+
+.room-tab-btn {
+  padding: 10px 24px;
+  border-radius: 40px;
+  font-family: 'Crimson Text', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fdfaf6;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.room-tab-btn:hover {
+  color: #6b3a2a;
+  background: rgba(201, 168, 76, 0.1);
+}
+
+.room-tab-btn.active {
+  background: linear-gradient(135deg, #722f37, #a02b2b);
+  color: #fdfaf6;
+  box-shadow: 0 4px 12px rgba(114, 47, 55, 0.3);
+}
+
+/* ===== Leaderboard Section ===== */
+.pdf-leaderboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px 40px;
+}
+
+.leaderboard-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.leaderboard-header h2 {
+  font-family: 'Playfair Display', serif;
+  color: #fdfaf6;
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 4px rgba(201, 168, 76, 0.2);
+}
+
+.leaderboard-header p {
+  color: #dcd1bb;
+  font-size: 1.1rem;
+}
+
+.leaderboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.leaderboard-rankings, .leaderboard-stats {
+  background: rgba(255, 254, 247, 0.94);
+  border: 1px solid rgba(114, 47, 55, 0.12);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 16px 42px rgba(114, 47, 55, 0.05);
+}
+
+.leaderboard-rankings h3, .leaderboard-stats h3 {
+  font-family: 'Playfair Display', serif;
+  color: #6b3a2a;
+  font-size: 1.5rem;
+  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.2);
+  padding-bottom: 12px;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.leaderboard-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  background: rgba(253, 250, 246, 0.6);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: 12px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+}
+
+.leaderboard-card:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 8px 24px rgba(201, 168, 76, 0.15);
+  background: #fff;
+}
+
+.leaderboard-card.is-you {
+  border: 2px solid #c9a84c;
+  background: linear-gradient(to right, rgba(201, 168, 76, 0.05), rgba(253, 250, 246, 0.8));
+}
+
+.rank-badge {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #a0a0a0;
+  width: 32px;
+}
+
+.rank-gold .rank-badge {
+  color: #ffd700;
+  font-size: 1.5rem;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+.rank-silver .rank-badge {
+  color: #c0c0c0;
+  font-size: 1.4rem;
+}
+.rank-bronze .rank-badge {
+  color: #cd7f32;
+  font-size: 1.3rem;
+}
+
+.leaderboard-user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.leaderboard-user-info strong {
+  font-family: 'Crimson Text', serif;
+  font-size: 1.2rem;
+  color: #1a1a1a;
+}
+
+.leaderboard-user-info span {
+  font-size: 0.85rem;
+  color: #8b7355;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.leaderboard-progress-ring {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #722f37;
+}
+
+.heatmap-strip {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+}
+
+.heatmap-cell {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.3);
+}
+
+.heatmap-caption {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #8b7355;
+  margin-top: 32px;
+  font-style: italic;
+}
+
+@media (max-width: 600px) {
+  .pdf-room-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "presence"
+      "viewer"
+      "sidebar";
+  }
+
+  .pdf-side-column {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
 }

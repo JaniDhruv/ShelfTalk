@@ -90,17 +90,16 @@ function AmbientEmbers() {
   );
 }
 
-function LeaderboardSection({ sortedParticipants, pageCount, userId, myPage }) {
+function LeaderboardSection({ sortedParticipants, pageCount, userId, myPage, commitPage, setActiveTab }) {
   return (
     <div className="pdf-leaderboard-container">
-      <div className="leaderboard-header">
+      <div className="leaderboard-header" style={{ textAlign: 'center', marginBottom: '32px' }}>
         <h2>🏆 Reading Leaderboard</h2>
         <p>See who is leading the pack and where everyone is in the book.</p>
       </div>
       
-      <div className="leaderboard-grid">
-        <div className="leaderboard-rankings">
-          <h3>Top Readers</h3>
+      <div className="leaderboard-grid" style={{ display: 'flex', justifyContent: 'center' }}>
+        <div className="leaderboard-rankings" style={{ maxWidth: '600px', width: '100%' }}>
           <div className="leaderboard-list">
             {sortedParticipants.map((p, idx) => {
               const isYou = getEntityId(p.userId) === userId;
@@ -130,32 +129,6 @@ function LeaderboardSection({ sortedParticipants, pageCount, userId, myPage }) {
               );
             })}
           </div>
-        </div>
-
-        <div className="leaderboard-stats">
-          <h3>Community Progress Heatmap</h3>
-          <div className="heatmap-strip">
-            {Array.from({ length: pageCount }, (_, i) => {
-              const pageNum = i + 1;
-              const readersOnPage = sortedParticipants.filter(p => {
-                const isYou = getEntityId(p.userId) === userId;
-                const pPage = isYou ? myPage : Number(p.currentPage || 1);
-                return pPage === pageNum;
-              }).length;
-              return (
-                <div
-                  key={pageNum}
-                  className="heatmap-cell"
-                  title={`Page ${pageNum}: ${readersOnPage} reader${readersOnPage !== 1 ? 's' : ''}`}
-                  style={{
-                    opacity: readersOnPage > 0 ? Math.min(1, 0.3 + (readersOnPage * 0.35)) : 0.4,
-                    backgroundColor: readersOnPage > 0 ? '#8b1a1a' : '#e0c9a6'
-                  }}
-                />
-              );
-            })}
-          </div>
-          <p className="heatmap-caption">Visualizing where everyone is clustered across the book.</p>
         </div>
       </div>
     </div>
@@ -488,6 +461,25 @@ export default function PdfReadingRoom() {
     const onReaderJoined = (payload) => {
       if (!payload || getEntityId(payload.sessionId) !== getEntityId(session?._id)) return;
       pushNotify(`${payload.username || 'Someone'} joined the room 📖`, 'info');
+      
+      setSession((prev) => {
+        if (!prev) return prev;
+        const exists = prev.participants?.some(p => getEntityId(p.userId) === getEntityId(payload.userId));
+        if (exists) return prev;
+        
+        return {
+          ...prev,
+          participants: [
+            ...(prev.participants || []),
+            {
+              userId: payload.userId,
+              username: payload.username,
+              currentPage: 1,
+              joinedAt: new Date().toISOString()
+            }
+          ]
+        };
+      });
     };
 
     const onReaderFinished = (payload) => {
@@ -814,7 +806,7 @@ export default function PdfReadingRoom() {
         )}
 
         {activeTab === 'leaderboard' && (
-          <LeaderboardSection sortedParticipants={sortedParticipants} pageCount={pageCount} userId={userId} myPage={myPage} />
+          <LeaderboardSection sortedParticipants={sortedParticipants} pageCount={pageCount} userId={userId} myPage={myPage} commitPage={commitPage} setActiveTab={setActiveTab} />
         )}
       </div>
 

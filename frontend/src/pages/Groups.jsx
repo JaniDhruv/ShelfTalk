@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GuestGate from '../components/GuestGate';
 import { getChatSocket } from '../lib/socket';
+import { sendPushNotification } from '../lib/pushNotifications';
 import './Discover.css';
 
 const buildPresence = (user) => {
@@ -86,13 +87,19 @@ export default function Groups() {
     if (!socket) return;
 
     const handleSocketUpdate = () => fetchGroups();
+    const handleGroupUpdate = (payload) => {
+      fetchGroups();
+      if (payload?.activityMessage && payload?.group) {
+        sendPushNotification(`Group Activity: ${payload.group.name}`, { body: payload.activityMessage }, true);
+      }
+    };
     
     socket.on('group:invite', handleSocketUpdate);
-    socket.on('group:updated', handleSocketUpdate);
+    socket.on('group:updated', handleGroupUpdate);
 
     return () => {
       socket.off('group:invite', handleSocketUpdate);
-      socket.off('group:updated', handleSocketUpdate);
+      socket.off('group:updated', handleGroupUpdate);
     };
   }, [user, fetchGroups]);
 

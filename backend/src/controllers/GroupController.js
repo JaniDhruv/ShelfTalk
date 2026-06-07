@@ -1,13 +1,13 @@
 import Group from '../models/Group.js';
 import User from '../models/User.js';
 
-const emitGroupUpdated = (req, group) => {
+const emitGroupUpdated = (req, group, activityMessage = null) => {
   const io = req.app.get('io');
   if (!io || !group) return;
   if (group.members) {
     group.members.forEach(memberId => {
       const id = memberId._id || memberId;
-      io.to(`user:${id}`).emit('group:updated', { group });
+      io.to(`user:${id}`).emit('group:updated', { group, activityMessage });
     });
   }
 };
@@ -133,7 +133,7 @@ export const updateGroup = async (req, res) => {
     if (!updatedGroup) {
       return res.status(404).json({ message: 'Group not found' });
     }
-    emitGroupUpdated(req, updatedGroup);
+    emitGroupUpdated(req, updatedGroup, 'Group details were updated');
     res.status(200).json(updatedGroup);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -168,7 +168,7 @@ export const addMember = async (req, res) => {
         group.joinRequests = (group.joinRequests || []).filter(id => id.toString() !== userId);
         await group.save();
       }
-      emitGroupUpdated(req, group);
+      emitGroupUpdated(req, group, 'A new member joined the group');
       return res.status(200).json({ message: 'Joined', group });
     }
     // Private groups: create join request
@@ -271,7 +271,7 @@ export const approveJoin = async (req, res) => {
     group.joinRequests = (group.joinRequests || []).filter(id => id.toString() !== requesterId);
     if (!group.members.includes(requesterId)) group.members.push(requesterId);
     await group.save();
-    emitGroupUpdated(req, group);
+    emitGroupUpdated(req, group, 'A new member joined the group');
     res.status(200).json({ message: 'Request approved', group });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -336,7 +336,10 @@ export const respondInvite = async (req, res) => {
       if (!group.members.includes(actorId)) group.members.push(actorId);
     }
     await group.save();
-    emitGroupUpdated(req, group);
+    
+    const activityMsg = accept ? 'A new member joined the group' : null;
+    emitGroupUpdated(req, group, activityMsg);
+    
     res.status(200).json({ message: accept ? 'Invite accepted' : 'Invite declined', group });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -358,7 +361,7 @@ export const addModerator = async (req, res) => {
     if (!group.moderators.includes(userId)) {
       group.moderators.push(userId);
       await group.save();
-      emitGroupUpdated(req, group);
+      emitGroupUpdated(req, group, 'A new moderator was appointed');
     }
     res.status(200).json({ message: 'Moderator added', group });
   } catch (error) {

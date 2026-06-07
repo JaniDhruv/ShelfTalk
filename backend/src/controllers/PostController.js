@@ -50,6 +50,14 @@ export const createPost = async (req, res) => {
     });
     if (group) {
       await post.populate('group', 'name visibility members');
+      
+      const io = req.app.get('io');
+      if (io && post.group && post.group.members) {
+        post.group.members.forEach(memberId => {
+          const id = memberId._id || memberId;
+          io.to(`user:${id}`).emit('group:postCreated', { post });
+        });
+      }
     }
 
     res.status(201).json({

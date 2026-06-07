@@ -20,6 +20,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider, useToast } from './components/ToastSystem';
 import { getChatSocket } from './lib/socket';
+import { initPushNotifications, sendPushNotification } from './lib/pushNotifications';
 
 // Main App component with routing
 function AppContent() {
@@ -31,12 +32,19 @@ function AppContent() {
   // Global Socket Listeners
   useEffect(() => {
     if (!user || !user._id) return;
+
+    // Initialize push notifications
+    initPushNotifications();
+
     const socket = getChatSocket(user._id);
     if (!socket) return;
 
     const handleGroupInvite = (payload) => {
       const groupName = payload?.group?.name || 'a group';
       toast.info(`You have been invited to join ${groupName}!`);
+      sendPushNotification('New Group Invite', {
+        body: `You have been invited to join ${groupName}!`,
+      });
     };
 
     socket.on('group:invite', handleGroupInvite);

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import ConfirmationModal from '../components/ConfirmationModal';
 import GuestGate from '../components/GuestGate';
 import { getChatSocket } from '../lib/socket';
+import { sendPushNotification } from '../lib/pushNotifications';
 import './GroupPage.css';
 import './PostsPage.css';
 import './Chat.css';
@@ -267,15 +268,49 @@ export default function GroupPage() {
     const handleGroupUpdate = (payload) => {
       if (payload?.group?._id === id || payload?.group === id) {
         fetchGroup();
+        if (payload.activityMessage) {
+          sendPushNotification(`Group Activity: ${payload.group.name}`, { body: payload.activityMessage }, true);
+        }
+      }
+    };
+
+    const handlePostCreated = (payload) => {
+      if (payload?.post?.group?._id === id || payload?.post?.group === id) {
+        fetchGroup();
+        const authorId = payload.post.author?._id || payload.post.author;
+        if (authorId && authorId !== userId) {
+          let authorName = 'Someone';
+          if (payload.post.author?.profile?.fullName) {
+             authorName = payload.post.author.profile.fullName.split(' ')[0];
+          } else if (payload.post.author?.username) {
+             authorName = payload.post.author.username;
+          }
+          const groupNameStr = payload.post.group?.name || 'group';
+          sendPushNotification(`New post in ${groupNameStr}`, { body: `Post by ${authorName}` }, true);
+        }
+      }
+    };
+
+    const handleLibraryUpdated = (payload) => {
+      if (payload?.groupId === id) {
+        fetchLibrary();
+        if (payload.action === 'upload' && payload.uploaderId !== userId) {
+           const bookTitle = payload.book?.title || 'a new book';
+           sendPushNotification(`New book added to library`, { body: `"${bookTitle}" was uploaded.` }, true);
+        }
       }
     };
 
     socket.on('group:updated', handleGroupUpdate);
+    socket.on('group:postCreated', handlePostCreated);
+    socket.on('group:libraryUpdated', handleLibraryUpdated);
 
     return () => {
       socket.off('group:updated', handleGroupUpdate);
+      socket.off('group:postCreated', handlePostCreated);
+      socket.off('group:libraryUpdated', handleLibraryUpdated);
     };
-  }, [userId, id, fetchGroup]);
+  }, [userId, id, fetchGroup, fetchLibrary]);
 
   // Library functions
   const fetchLibrary = useCallback(async () => {
@@ -725,6 +760,22 @@ export default function GroupPage() {
 
     const handleMessageCreated = (incoming) => {
       mergeChatMessage(incoming);
+
+      const senderId = incoming.sender?._id || incoming.sender;
+      if (senderId && senderId !== userId) {
+        let senderName = 'Someone';
+        if (incoming.sender?.profile?.fullName) {
+          senderName = incoming.sender.profile.fullName.split(' ')[0];
+        } else if (incoming.sender?.username) {
+          senderName = incoming.sender.username;
+        }
+
+        const bodyText = incoming.type === 'text' 
+          ? (incoming.content?.length > 40 ? incoming.content.substring(0, 40) + '...' : incoming.content)
+          : 'Sent an attachment';
+
+        sendPushNotification(`New group message from ${senderName}`, { body: bodyText }, true);
+      }
     };
 
     const handleMessageEdited = (incoming) => {

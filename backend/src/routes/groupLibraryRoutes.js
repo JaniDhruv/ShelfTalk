@@ -70,6 +70,14 @@ router.post('/', upload.single('pdf'), async (req, res) => {
       coverImage: req.body.coverImage || '',
     });
 
+    const io = req.app.get('io');
+    if (io) {
+      (group.members || []).forEach(memberId => {
+        const id = memberId._id ? memberId._id.toString() : memberId.toString();
+        io.to(`user:${id}`).emit('group:libraryUpdated', { groupId, book, action: 'upload', uploaderId: userId });
+      });
+    }
+
     return res.status(201).json({ book });
   } catch (e) {
     return res.status(e.status || 500).json({ message: e.message || 'Upload failed' });
@@ -113,6 +121,15 @@ router.delete('/:bookId', async (req, res) => {
     }
 
     await GroupBook.findByIdAndDelete(bookId);
+
+    const io = req.app.get('io');
+    if (io) {
+      (group.members || []).forEach(memberId => {
+        const id = memberId._id ? memberId._id.toString() : memberId.toString();
+        io.to(`user:${id}`).emit('group:libraryUpdated', { groupId, deletedBookId: bookId, action: 'delete' });
+      });
+    }
+
     return res.status(200).json({ message: 'Book deleted' });
   } catch (e) {
     return res.status(e.status || 500).json({ message: e.message || 'Failed to delete book' });

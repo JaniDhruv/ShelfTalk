@@ -26,7 +26,11 @@ export const emitMessageCreated = (io, { message, conversation }) => {
   const conversationId = conversationIdFromMessage(message) || toId(conversation?._id);
   if (!io || !conversationId) return;
 
-  io.to(conversationRoom(conversationId)).emit('chat:messageCreated', message);
+  let target = io.to(conversationRoom(conversationId));
+  for (const memberId of conversationMemberIds(conversation)) {
+    target = target.to(userRoom(memberId));
+  }
+  target.emit('chat:messageCreated', message);
   emitConversationUpdated(io, conversation);
 };
 

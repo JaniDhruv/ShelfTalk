@@ -2132,6 +2132,7 @@ function InviteSearch({ group, groupId, actorId, onDone }) {
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState('');
+  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
 
   const search = async (q) => {
     setQuery(q);

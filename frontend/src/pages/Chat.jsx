@@ -314,22 +314,7 @@ export default function Chat() {
     const handleMessageCreated = (incoming) => {
       mergeMessage(incoming);
       
-      // Push notification for incoming messages
-      const senderId = incoming.sender?._id || incoming.sender;
-      if (senderId && senderId !== userId) {
-        let senderName = 'Someone';
-        if (incoming.sender?.profile?.fullName) {
-          senderName = incoming.sender.profile.fullName.split(' ')[0];
-        } else if (incoming.sender?.username) {
-          senderName = incoming.sender.username;
-        }
-        
-        const bodyText = incoming.type === 'text' 
-          ? (incoming.content?.length > 40 ? incoming.content.substring(0, 40) + '...' : incoming.content)
-          : 'Sent an attachment';
-          
-        sendPushNotification(`New message from ${senderName}`, { body: bodyText }, true);
-      }
+      // Push notification for incoming messages is now handled globally in App.js
     };
 
     const handleMessageEdited = (incoming) => {

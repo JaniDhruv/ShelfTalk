@@ -89,9 +89,6 @@ export default function Groups() {
     const handleSocketUpdate = () => fetchGroups();
     const handleGroupUpdate = (payload) => {
       fetchGroups();
-      if (payload?.activityMessage && payload?.group) {
-        sendPushNotification(`Group Activity: ${payload.group.name}`, { body: payload.activityMessage }, true);
-      }
     };
     
     socket.on('group:invite', handleSocketUpdate);

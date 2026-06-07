@@ -294,9 +294,6 @@ export default function GroupPage() {
     const handleGroupUpdate = (payload) => {
       if (payload?.group?._id === id || payload?.group === id) {
         fetchGroup();
-        if (payload.activityMessage) {
-          sendPushNotification(`Group Activity: ${payload.group.name}`, { body: payload.activityMessage }, true);
-        }
       }
     };
 
@@ -312,7 +309,6 @@ export default function GroupPage() {
              authorName = payload.post.author.username;
           }
           const groupNameStr = payload.post.group?.name || 'group';
-          sendPushNotification(`New post in ${groupNameStr}`, { body: `Post by ${authorName}` }, true);
         }
       }
     };
@@ -322,7 +318,6 @@ export default function GroupPage() {
         fetchLibrary();
         if (payload.action === 'upload' && payload.uploaderId !== userId) {
            const bookTitle = payload.book?.title || 'a new book';
-           sendPushNotification(`New book added to library`, { body: `"${bookTitle}" was uploaded.` }, true);
         }
       }
     };
@@ -775,8 +770,6 @@ export default function GroupPage() {
         const bodyText = incoming.type === 'text' 
           ? (incoming.content?.length > 40 ? incoming.content.substring(0, 40) + '...' : incoming.content)
           : 'Sent an attachment';
-
-        sendPushNotification(`New group message from ${senderName}`, { body: bodyText }, true);
       }
     };
 

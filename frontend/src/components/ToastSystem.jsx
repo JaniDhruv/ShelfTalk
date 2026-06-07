@@ -32,6 +32,14 @@ export function ToastProvider({ children }) {
     }
   };
 
+  useEffect(() => {
+    const handleGlobalToast = (e) => {
+      if (e.detail) addToast(e.detail);
+    };
+    window.addEventListener('global-toast', handleGlobalToast);
+    return () => window.removeEventListener('global-toast', handleGlobalToast);
+  }, []);
+
   const removeToast = (id) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   };

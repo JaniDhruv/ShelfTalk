@@ -65,6 +65,10 @@ Originally built as a college project, ShelfTalk has since been revived and sign
 - Send and manage group invites directly from the platform to help the community grow
 - Share a personal invite link to bring friends onto the platform
 
+### 🔔 Push Notifications *(New)*
+- Receive instant desktop notifications for new messages and group activity
+- Stay seamlessly updated even when the browser is in the background
+
 ---
 
 ## 🛠 Tech Stack
@@ -222,6 +226,7 @@ GitHub Copilot was instrumental in this revival:
 | **Database** | Migrated from local MongoDB to MongoDB Atlas |
 | **Frontend Build** | Migrated from CRA to Vite for faster dev experience |
 | **Auth** | Properly implemented JWT across all protected routes |
+| **Push Notifications** | Implemented native desktop notifications for app-wide events |
 | **UI Polish** | Enhanced Chat, Groups, Reading Rooms, and Post pages |
 | **Landing Page** | Redesigned and updated |
 | **Deployment** | Added Vercel Analytics; resolved deployment config issues |
@@ -230,7 +235,6 @@ GitHub Copilot was instrumental in this revival:
 
 ## 🧩 Future Enhancements
 
-- Push notifications for group activity
 - Bookmarking and reading history
 - AI-powered book recommendations
 - Mobile-friendly UI revamp

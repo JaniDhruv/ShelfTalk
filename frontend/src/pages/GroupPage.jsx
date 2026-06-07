@@ -260,6 +260,30 @@ export default function GroupPage() {
     fetchGroup();
   }, [fetchGroup, isGuest]);
 
+  // Library functions
+  const fetchLibrary = useCallback(async () => {
+    if (!id || !userId) return;
+    setLibraryLoading(true);
+    try {
+      const [booksRes, sessionRes] = await Promise.all([
+        fetch(`${API_BASE}/api/groups/${id}/library?userId=${userId}`),
+        fetch(`${API_BASE}/api/sessions/group/${id}`),
+      ]);
+      if (booksRes.ok) {
+        const data = await booksRes.json();
+        setLibraryBooks(data.books || []);
+      }
+      if (sessionRes.ok) {
+        const data = await sessionRes.json();
+        setActiveSession(data.session || null);
+      }
+    } catch (e) {
+      console.error('Library fetch error:', e);
+    } finally {
+      setLibraryLoading(false);
+    }
+  }, [id, userId, API_BASE]);
+
   useEffect(() => {
     if (!userId || !id) return;
     const socket = getChatSocket(userId);
@@ -311,30 +335,6 @@ export default function GroupPage() {
       socket.off('group:libraryUpdated', handleLibraryUpdated);
     };
   }, [userId, id, fetchGroup, fetchLibrary]);
-
-  // Library functions
-  const fetchLibrary = useCallback(async () => {
-    if (!id || !userId) return;
-    setLibraryLoading(true);
-    try {
-      const [booksRes, sessionRes] = await Promise.all([
-        fetch(`${API_BASE}/api/groups/${id}/library?userId=${userId}`),
-        fetch(`${API_BASE}/api/sessions/group/${id}`),
-      ]);
-      if (booksRes.ok) {
-        const data = await booksRes.json();
-        setLibraryBooks(data.books || []);
-      }
-      if (sessionRes.ok) {
-        const data = await sessionRes.json();
-        setActiveSession(data.session || null);
-      }
-    } catch (e) {
-      console.error('Library fetch error:', e);
-    } finally {
-      setLibraryLoading(false);
-    }
-  }, [id, userId, API_BASE]);
 
   const handleUploadPdf = async (e) => {
     e.preventDefault();

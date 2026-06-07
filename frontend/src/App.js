@@ -34,7 +34,21 @@ function AppContent() {
     if (!user || !user._id) return;
 
     // Initialize push notifications
-    initPushNotifications();
+    if ('Notification' in window && Notification.permission === 'default') {
+      toast.info('Click here to enable desktop notifications for new messages & group activity.', {
+        title: 'Enable Notifications',
+        duration: 10000,
+        onClick: () => {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              toast.success('Notifications enabled!');
+            }
+          });
+        }
+      });
+    } else {
+      initPushNotifications();
+    }
 
     const socket = getChatSocket(user._id);
     if (!socket) return;

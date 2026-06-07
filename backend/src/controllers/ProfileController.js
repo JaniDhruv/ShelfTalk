@@ -20,9 +20,10 @@ export const getProfileByUserId = async (req, res) => {
     const { id } = req.params;
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: 'User not found' });
-    let profile = await Profile.findOne({ user: id });
+    let profile = await Profile.findOne({ user: id }).populate('user', 'username email avatar');
     if (!profile) {
       profile = await Profile.create({ user: id, fullName: user.username });
+      await profile.populate('user', 'username email avatar');
     }
     await ensureUserProfileLink(user, profile);
     res.json(profile);

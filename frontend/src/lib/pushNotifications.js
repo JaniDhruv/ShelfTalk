@@ -26,10 +26,8 @@ export const sendPushNotification = (title, options = {}, requireHidden = false)
   if (!('Notification' in window)) return;
 
   if (Notification.permission === 'granted') {
-    // If requireHidden is true, only fire if the tab is hidden
-    if (requireHidden && !document.hidden) {
-      return;
-    }
+    // Notifications will now fire even if the tab is visible, 
+    // to ensure they appear across all active machines.
 
     try {
       const notification = new Notification(title, {

@@ -44,8 +44,8 @@ export default function Profile() {
         const data = await resp.json();
         const normalized = {
           id: resolvedId,
-          username: user?.username || data?.user?.username || '',
-          fullName: data.fullName || user?.username || '',
+          username: data?.user?.username || user?.username || '',
+          fullName: data.fullName || data?.user?.username || user?.username || '',
           email: user?.email,
           bio: data.bio || '',
           avatar: data.avatar || null,

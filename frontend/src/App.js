@@ -17,13 +17,34 @@ import SoloPdfReader from './pages/SoloPdfReader';
 
 import NavBar from './components/NavBar';
 import ProtectedRoute from './components/ProtectedRoute';
-import { AuthProvider } from './context/AuthContext';
-import { ToastProvider } from './components/ToastSystem';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider, useToast } from './components/ToastSystem';
+import { getChatSocket } from './lib/socket';
 
 // Main App component with routing
 function AppContent() {
   const location = useLocation();
   const hideNavbar = location.pathname === '/login' || location.pathname === '/signup';
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  // Global Socket Listeners
+  useEffect(() => {
+    if (!user || !user._id) return;
+    const socket = getChatSocket(user._id);
+    if (!socket) return;
+
+    const handleGroupInvite = (payload) => {
+      const groupName = payload?.group?.name || 'a group';
+      toast.info(`You have been invited to join ${groupName}!`);
+    };
+
+    socket.on('group:invite', handleGroupInvite);
+
+    return () => {
+      socket.off('group:invite', handleGroupInvite);
+    };
+  }, [user, toast]);
 
   // Scroll to top on route change
   useEffect(() => {

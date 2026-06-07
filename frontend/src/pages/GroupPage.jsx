@@ -259,6 +259,24 @@ export default function GroupPage() {
     fetchGroup();
   }, [fetchGroup, isGuest]);
 
+  useEffect(() => {
+    if (!userId || !id) return;
+    const socket = getChatSocket(userId);
+    if (!socket) return;
+
+    const handleGroupUpdate = (payload) => {
+      if (payload?.group?._id === id || payload?.group === id) {
+        fetchGroup();
+      }
+    };
+
+    socket.on('group:updated', handleGroupUpdate);
+
+    return () => {
+      socket.off('group:updated', handleGroupUpdate);
+    };
+  }, [userId, id, fetchGroup]);
+
   // Library functions
   const fetchLibrary = useCallback(async () => {
     if (!id || !userId) return;

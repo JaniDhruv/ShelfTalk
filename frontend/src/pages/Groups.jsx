@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GuestGate from '../components/GuestGate';
+import { getChatSocket } from '../lib/socket';
 import './Discover.css';
 
 const buildPresence = (user) => {
@@ -78,6 +79,22 @@ export default function Groups() {
   }, []);
 
   useEffect(() => { fetchGroups(); }, [fetchGroups]);
+
+  useEffect(() => {
+    if (!user || !user._id) return;
+    const socket = getChatSocket(user._id);
+    if (!socket) return;
+
+    const handleSocketUpdate = () => fetchGroups();
+    
+    socket.on('group:invite', handleSocketUpdate);
+    socket.on('group:updated', handleSocketUpdate);
+
+    return () => {
+      socket.off('group:invite', handleSocketUpdate);
+      socket.off('group:updated', handleSocketUpdate);
+    };
+  }, [user, fetchGroups]);
 
   // Derived: Owned & Joined (excluding owned) for clearer subsections
   const ownedGroups = useMemo(() => {

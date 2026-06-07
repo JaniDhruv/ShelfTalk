@@ -10,7 +10,7 @@ export const initPushNotifications = () => {
   if (Notification.permission === 'default') {
     Notification.requestPermission().then((permission) => {
       if (permission === 'granted') {
-        console.log('Notification permission granted.');
+
       }
     });
   }

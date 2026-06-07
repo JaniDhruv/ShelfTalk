@@ -110,11 +110,11 @@ export default function Discover() {
     if (selectedGenres.length) params.append('genres', selectedGenres.join(','));
     if (sortBy) params.append('sortBy', sortBy);
     try {
-      console.log('Fetching users with params:', params.toString());
+
       setIsLoading(true);
       const resp = await fetch(`${API_BASE}/api/discover/users?${params.toString()}`);
       const data = await resp.json();
-      console.log('Received users:', data?.length || 0, data);
+
       setUsers(data || []);
     } catch (e) {
       console.error('Failed to load users', e);

@@ -55,7 +55,7 @@ export const sendMessage = async (req, res) => {
   try {
     const { conversationId } = req.params;
     const { senderId, content, type } = req.body;
-    console.log('[DEBUG sendMessage]', { conversationId, senderId, contentLength: content?.length, type });
+
     const result = await sendConversationMessage({
       conversationId,
       senderId,

@@ -395,8 +395,7 @@ export default function ReadingRoom() {
     );
   }
 
-  console.log("STATUS", session?.status);
-console.log("PAGECOUNT", session?.pageCount);
+
 
   return (
     <div className="reading-room-page">

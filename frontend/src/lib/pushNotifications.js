@@ -31,8 +31,8 @@ export const sendPushNotification = (title, options = {}, requireHidden = false)
 
     try {
       const notification = new Notification(title, {
-        icon: '/logo192.png', // Assuming a standard CRA or Vite icon exists
-        badge: '/logo192.png',
+        icon: '/favicon.png', // Use the app favicon
+        badge: '/favicon.png',
         ...options,
       });
 

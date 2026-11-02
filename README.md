@@ -8,16 +8,46 @@ Turn every reading list into a living conversation.
 
   <p>
     <a href="https://shelftalk-community.vercel.app/">🌐 Live Demo</a> •
+    <a href="#-challenge-winner">🏆 Challenge Winner</a> •
     <a href="#-quick-setup">⚡ Quick Setup</a> •
     <a href="#-core-features">✨ Features</a> •
     <a href="#-tech-stack">🛠 Tech Stack</a>
   </p>
+
+  [![Challenge Winner](https://img.shields.io/badge/Challenge%20Winner-GitHub%20Copilot-blueviolet?style=flat-square&logo=githubcopilot)](https://dev.to/devteam/congrats-to-the-github-finish-up-a-thon-challenge-winners-1k0h)
 
   ![Node.js](https://img.shields.io/badge/Node.js-v14+-339933?style=flat-square&logo=node.js&logoColor=white)
   ![React](https://img.shields.io/badge/React-Vite-61DAFB?style=flat-square&logo=react&logoColor=black)
   ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)
   ![Socket.io](https://img.shields.io/badge/Socket.io-Real--Time-010101?style=flat-square&logo=socket.io)
   ![Vercel](https://img.shields.io/badge/Deployed-Vercel-000000?style=flat-square&logo=vercel)
+
+</div>
+
+---
+
+## 🏆 Challenge Winner
+
+<div align="center">
+
+<a href="https://dev.to/devteam/congrats-to-the-github-finish-up-a-thon-challenge-winners-1k0h">
+  <img src="frontend/public/github-copilot-winner.png" alt="GitHub Copilot Finish-Up-A-Thon Challenge Winner" width="580" />
+</a>
+
+<br />
+
+**Awarded for winning the GitHub Copilot "Finish-Up-A-Thon" Challenge 🏆**
+
+[![DEV.to Winners Announcement](https://img.shields.io/badge/Winners%20Announcement-DEV.to-0A0A0A?style=for-the-badge&logo=dev.to&logoColor=white)](https://dev.to/devteam/congrats-to-the-github-finish-up-a-thon-challenge-winners-1k0h)
+
+<blockquote>
+  <p>
+    "<strong><a href="https://dev.to/dj29">@dj29</a></strong> revived ShelfTalk, a MERN social platform for book lovers, replacing REST polling with real-time Socket.io chat and shipping brand-new live synchronized reading rooms."
+  </p>
+  <p>
+    — <em><a href="https://dev.to/devteam/congrats-to-the-github-finish-up-a-thon-challenge-winners-1k0h">GitHub Copilot "Finish-Up-A-Thon" Challenge Winners Announcement</a></em>
+  </p>
+</blockquote>
 
 </div>
 
@@ -202,6 +232,9 @@ Runs on **http://localhost:3000**
 ---
 
 ## 🚀 What's New (Finish-Up-A-Thon)
+
+> 🏆 **Winner!** ShelfTalk was selected as a winner of the [GitHub Copilot "Finish-Up-A-Thon" Challenge](https://dev.to/devteam/congrats-to-the-github-finish-up-a-thon-challenge-winners-1k0h)!  
+> *"[@dj29](https://dev.to/dj29) revived ShelfTalk, a MERN social platform for book lovers, replacing REST polling with real-time Socket.io chat and shipping brand-new live synchronized reading rooms."*
 
 This project originally started as a college project, but then for the **GitHub Finish-Up-A-Thon Challenge**, it was revived, polished, and significantly expanded.
 
